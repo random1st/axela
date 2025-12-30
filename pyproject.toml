@@ -1,0 +1,226 @@
+[project]
+name = "axela"
+version = "0.1.0"
+description = "Personal digest bot aggregating updates from work tools"
+readme = "README.md"
+authors = [
+    { name = "random1st", email = "voroninr@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    # Web framework
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    # Database
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+    "greenlet>=3.1.0",
+    # Validation & Settings
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    # Scheduling
+    "apscheduler>=4.0.0a5",
+    # Telegram
+    "python-telegram-bot>=21.9",
+    # HTTP clients for collectors
+    "httpx>=0.28.0",
+    "aiohttp>=3.11.0",
+    # Google APIs
+    "google-auth>=2.37.0",
+    "google-auth-oauthlib>=1.2.0",
+    "google-api-python-client>=2.157.0",
+    # Microsoft Graph
+    "msal>=1.31.0",
+    "msgraph-sdk>=1.15.0",
+    # Slack
+    "slack-sdk>=3.34.0",
+    # Jira
+    "jira>=3.8.0",
+    # Encryption for credentials
+    "cryptography>=44.0.0",
+    # Utilities
+    "python-dateutil>=2.9.0",
+    "structlog>=24.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "pytest-mock>=3.14.0",
+    "httpx>=0.28.0",
+    "respx>=0.22.0",
+    "factory-boy>=3.3.0",
+    "polyfactory>=2.18.0",
+    "mypy>=1.14.0",
+    "ruff>=0.8.0",
+    "aiosqlite>=0.20.0",
+]
+
+[project.scripts]
+axela = "axela.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/axela"]
+
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py313"
+
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+
+[tool.ruff.lint]
+#select = [
+#    "D", "E4", "E7", "E9", "F", "I", "UP", "B", "S", "C4", "PIE", "SIM", "TCH", "ARG", "PTH", "ERA", "PL", "PERF", "RUF"]
+select = ["ALL"]
+ignore = [
+    "S101",    # Use of assert detected
+    "PLR0913", # Too many arguments in function definition
+    "PLR0911", # Too many return statements
+    "PLR2004", # Magic value used in comparison
+    "S603",    # subprocess call: check for execution of untrusted input
+    "E501",    # Line too long (handled by formatter)
+    "PLC0415",
+    "D203",
+    "D213",
+    "SLF001",
+    "PGH003",
+    "BLE001",
+    "ANN401",
+    "FBT003",
+    "FBT001",
+    "TRY002",
+    "PT011",
+    "INP001",
+    "B018",
+    "C901",
+    "COM812",
+]
+
+fixable = ["ALL"]
+unfixable = ["EM"]  # Don't auto-fix exception message rules
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "S108", "S110", "BLE001", "PTH123", "PERF401", "ARG002", "S105",
+    "RUF001", "RUF002", "RUF003",
+    "D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107",
+    "D205",
+    # Test-specific relaxations
+    "S106",   # Possible hardcoded password in tests
+    "ARG001", # Unused function arguments in test handlers
+    "EM101",  # Exception string literals allowed in tests
+    "TRY003", # Long exception messages allowed in tests
+    "TRY301", # Raise in try block allowed in tests
+    "PT012",  # pytest.raises with multiple statements
+]
+"integration/**" = [
+    "S108", "S110", "BLE001", "PTH123", "PERF401", "ARG002", "S105",
+    "RUF001", "RUF002", "RUF003",
+    "I001", "TC002",
+    "D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107",
+    "D205"
+]
+"scripts/**" = ["PLR0912", "PLR0915", "D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
+"hach/runtime/lifespan.py" = ["PLR0912", "PLR0915"]
+"alembic/versions/*" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107", "I001"]
+"alembic/env.py" = ["E402", "I001"]
+# Settings views are simple facade classes where property names are self-documenting
+"hach/config/settings.py" = ["D102", "D107"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = false
+docstring-code-line-length = "dynamic"
+
+
+
+# MyPy configuration
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "jira.*",
+    "slack_sdk.*",
+    "google.*",
+    "googleapiclient.*",
+    "msal.*",
+    "msgraph.*",
+    "apscheduler.*",
+]
+ignore_missing_imports = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["src/axela"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
+
+[dependency-groups]
+dev = [
+    "google-auth-stubs>=0.3.0",
+    "ty>=0.0.8",
+]
