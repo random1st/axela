@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Axela{% endblock %}
+
+{% block content %}
+<header class="small-margin">
+    <h4>Dashboard</h4>
+    <p class="secondary-text">Overview of your digest system</p>
+</header>
+
+<!-- Stats Cards -->
+<div class="grid small-margin">
+    <div class="s12 m6 l3">
+        <article class="stat-card surface-variant round">
+            <div class="padding">
+                <i class="large">folder</i>
+                <div class="large-text primary-text">{{ stats.projects }}</div>
+                <p>Projects</p>
+            </div>
+        </article>
+    </div>
+    <div class="s12 m6 l3">
+        <article class="stat-card surface-variant round">
+            <div class="padding">
+                <i class="large">source</i>
+                <div class="large-text primary-text">{{ stats.sources }}</div>
+                <p>Active Sources</p>
+            </div>
+        </article>
+    </div>
+    <div class="s12 m6 l3">
+        <article class="stat-card surface-variant round">
+            <div class="padding">
+                <i class="large">schedule</i>
+                <div class="large-text primary-text">{{ stats.schedules }}</div>
+                <p>Schedules</p>
+            </div>
+        </article>
+    </div>
+    <div class="s12 m6 l3">
+        <article class="stat-card surface-variant round">
+            <div class="padding">
+                <i class="large">mail</i>
+                <div class="large-text primary-text">{{ stats.digests_sent }}</div>
+                <p>Digests Sent</p>
+            </div>
+        </article>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="medium-margin">
+    <h5>Quick Actions</h5>
+    <div class="grid">
+        <div class="s12 m6 l4">
+            <a href="{{ url_for('projects_list') }}?action=new" class="button large secondary round">
+                <i>add</i>
+                <span>New Project</span>
+            </a>
+        </div>
+        <div class="s12 m6 l4">
+            <a href="{{ url_for('sources_list') }}?action=new" class="button large secondary round">
+                <i>add</i>
+                <span>Add Source</span>
+            </a>
+        </div>
+        <div class="s12 m6 l4">
+            <a href="{{ url_for('schedules_list') }}?action=new" class="button large secondary round">
+                <i>add</i>
+                <span>Create Schedule</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="medium-margin">
+    <h5>Recent Projects</h5>
+    {% if recent_projects %}
+    <div class="card-grid">
+        {% for project in recent_projects %}
+        <article class="surface round">
+            <div class="row padding">
+                <div class="max">
+                    <h6>{{ project.name }}</h6>
+                    <p class="secondary-text">{{ project.sources_count }} sources</p>
+                </div>
+                {% if project.color %}
+                <div class="circle" style="background-color: {{ project.color }}; width: 24px; height: 24px;"></div>
+                {% endif %}
+            </div>
+            <div class="padding">
+                <a href="{{ url_for('projects_list') }}#project-{{ project.id }}" class="button border round">
+                    <span>View</span>
+                    <i>arrow_forward</i>
+                </a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <article class="surface round padding">
+        <p class="secondary-text">No projects yet. Create your first project to get started!</p>
+        <a href="{{ url_for('projects_list') }}?action=new" class="button round">
+            <i>add</i>
+            <span>Create Project</span>
+        </a>
+    </article>
+    {% endif %}
+</div>
+
+<!-- System Status -->
+<div class="medium-margin">
+    <h5>System Status</h5>
+    <article class="surface round padding"
+             hx-get="/web/api/status"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML">
+        <progress class="circle"></progress>
+        <span class="htmx-indicator">Loading status...</span>
+    </article>
+</div>
+{% endblock %}

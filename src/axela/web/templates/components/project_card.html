@@ -1,0 +1,24 @@
+<article id="project-{{ project.id }}" class="surface round fade-in">
+    <div class="row padding">
+        <div class="max">
+            <h6>{{ project.name }}</h6>
+            <p class="secondary-text small-text">Created {{ project.created_at.strftime('%b %d, %Y') }}</p>
+        </div>
+        {% if project.color %}
+        <div class="circle" style="background-color: {{ project.color }}; width: 32px; height: 32px;"></div>
+        {% endif %}
+    </div>
+    <div class="divider"></div>
+    <nav class="padding">
+        <button class="border round small"
+                onclick="editProject('{{ project.id }}', '{{ project.name }}', '{{ project.color or '' }}')">
+            <i>edit</i>
+            <span>Edit</span>
+        </button>
+        <button class="border round small error"
+                onclick="confirmDelete('{{ project.id }}')">
+            <i>delete</i>
+            <span>Delete</span>
+        </button>
+    </nav>
+</article>

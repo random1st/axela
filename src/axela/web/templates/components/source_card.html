@@ -1,0 +1,41 @@
+<article id="source-{{ source.id }}" class="surface round fade-in">
+    <div class="row padding">
+        <div class="max">
+            <div class="row">
+                <h6>{{ source.name }}</h6>
+                {% if source.is_active %}
+                <span class="chip small primary">Active</span>
+                {% else %}
+                <span class="chip small secondary">Inactive</span>
+                {% endif %}
+            </div>
+            <p class="secondary-text small-text">
+                <i class="small">{% if source.source_type == 'jira' %}bug_report{% elif source.source_type == 'slack' %}tag{% elif source.source_type == 'gmail' %}mail{% elif source.source_type == 'google_calendar' %}calendar_month{% elif source.source_type == 'outlook_mail' %}mail{% elif source.source_type == 'outlook_calendar' %}calendar_month{% elif source.source_type == 'teams' %}groups{% else %}source{% endif %}</i>
+                {{ source.source_type | replace('_', ' ') | title }}
+                &bull; {{ source.project_name }}
+            </p>
+            {% if source.last_synced_at %}
+            <p class="secondary-text small-text">
+                <i class="small">sync</i> Last synced: {{ source.last_synced_at.strftime('%b %d, %H:%M') }}
+            </p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="divider"></div>
+    <nav class="padding">
+        <button class="border round small" onclick="testCredentials('{{ source.id }}')">
+            <i>verified</i>
+            <span>Test</span>
+        </button>
+        <button class="border round small"
+                onclick="editSource('{{ source.id }}', '{{ source.name }}', {{ source.is_active | lower }})">
+            <i>edit</i>
+            <span>Edit</span>
+        </button>
+        <button class="border round small error"
+                onclick="confirmDeleteSource('{{ source.id }}')">
+            <i>delete</i>
+            <span>Delete</span>
+        </button>
+    </nav>
+</article>

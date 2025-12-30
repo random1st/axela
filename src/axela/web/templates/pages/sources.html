@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}Sources - Axela{% endblock %}
+
+{% block content %}
+<header class="row small-margin">
+    <div class="max">
+        <h4>Sources</h4>
+        <p class="secondary-text">Configure data sources for your digests</p>
+    </div>
+    <button class="circle large" onclick="document.getElementById('new-source-dialog').showModal()"
+            {% if not projects %}disabled{% endif %}>
+        <i>add</i>
+    </button>
+</header>
+
+{% if not projects %}
+<article class="surface round padding medium-margin">
+    <div class="center-align">
+        <i class="extra large secondary-text">folder_off</i>
+        <h6>No projects available</h6>
+        <p class="secondary-text">Create a project first before adding sources.</p>
+        <a href="{{ url_for('projects_list') }}" class="button round">
+            <i>folder</i>
+            <span>Go to Projects</span>
+        </a>
+    </div>
+</article>
+{% else %}
+
+<!-- Filter by Project -->
+<div class="small-margin">
+    <div class="field suffix border round">
+        <select id="project-filter" onchange="filterByProject(this.value)">
+            <option value="">All Projects</option>
+            {% for project in projects %}
+            <option value="{{ project.id }}" {% if selected_project == project.id|string %}selected{% endif %}>
+                {{ project.name }}
+            </option>
+            {% endfor %}
+        </select>
+        <i>arrow_drop_down</i>
+    </div>
+</div>
+
+<!-- Sources List -->
+<div id="sources-list" class="card-grid">
+    {% for source in sources %}
+    {% include "components/source_card.html" %}
+    {% else %}
+    <article class="surface round padding">
+        <div class="center-align">
+            <i class="extra large secondary-text">cloud_off</i>
+            <h6>No sources yet</h6>
+            <p class="secondary-text">Add your first data source to start collecting updates.</p>
+            <button class="round" onclick="document.getElementById('new-source-dialog').showModal()">
+                <i>add</i>
+                <span>Add Source</span>
+            </button>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+
+<!-- New Source Dialog -->
+<dialog id="new-source-dialog" class="round large">
+    <header class="row">
+        <h5 class="max">Add New Source</h5>
+        <button class="circle transparent" onclick="this.closest('dialog').close()">
+            <i>close</i>
+        </button>
+    </header>
+    <form hx-post="/web/api/sources"
+          hx-target="#sources-list"
+          hx-swap="afterbegin"
+          hx-on::after-request="if(event.detail.successful) { this.reset(); this.closest('dialog').close(); showToast('Source added!', 'success'); }">
+
+        <div class="grid">
+            <div class="s12 m6">
+                <div class="field label suffix border round">
+                    <select name="project_id" required>
+                        <option value="">Select Project</option>
+                        {% for project in projects %}
+                        <option value="{{ project.id }}">{{ project.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <label>Project</label>
+                    <i>arrow_drop_down</i>
+                </div>
+            </div>
+            <div class="s12 m6">
+                <div class="field label suffix border round">
+                    <select name="source_type" required onchange="showCredentialsFields(this.value)">
+                        <option value="">Select Type</option>
+                        <option value="jira">Jira</option>
+                        <option value="slack">Slack</option>
+                        <option value="gmail">Gmail</option>
+                        <option value="google_calendar">Google Calendar</option>
+                        <option value="outlook_mail">Outlook Mail</option>
+                        <option value="outlook_calendar">Outlook Calendar</option>
+                        <option value="teams">Microsoft Teams</option>
+                    </select>
+                    <label>Source Type</label>
+                    <i>arrow_drop_down</i>
+                </div>
+            </div>
+        </div>
+
+        <div class="field label border round">
+            <input type="text" name="name" required minlength="1" maxlength="100">
+            <label>Source Name</label>
+        </div>
+
+        <!-- Dynamic Credentials Fields -->
+        <div id="credentials-fields">
+            <!-- Fields will be inserted here based on source type -->
+        </div>
+
+        <nav class="right-align">
+            <button type="button" class="border round" onclick="this.closest('dialog').close()">Cancel</button>
+            <button type="submit" class="round">
+                <i>check</i>
+                <span>Add Source</span>
+            </button>
+        </nav>
+    </form>
+</dialog>
+
+<!-- Edit Source Dialog -->
+<dialog id="edit-source-dialog" class="round large">
+    <header class="row">
+        <h5 class="max">Edit Source</h5>
+        <button class="circle transparent" onclick="this.closest('dialog').close()">
+            <i>close</i>
+        </button>
+    </header>
+    <form id="edit-source-form"
+          hx-swap="outerHTML"
+          hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); showToast('Source updated!', 'success'); }">
+        <input type="hidden" name="id" id="edit-source-id">
+
+        <div class="field label border round">
+            <input type="text" name="name" id="edit-source-name" required minlength="1" maxlength="100">
+            <label>Source Name</label>
+        </div>
+
+        <div class="field">
+            <label class="switch">
+                <input type="checkbox" name="is_active" id="edit-source-active">
+                <span>Active</span>
+            </label>
+        </div>
+
+        <nav class="right-align">
+            <button type="button" class="border round" onclick="this.closest('dialog').close()">Cancel</button>
+            <button type="submit" class="round">
+                <i>check</i>
+                <span>Save</span>
+            </button>
+        </nav>
+    </form>
+</dialog>
+
+<!-- Delete Confirmation Dialog -->
+<dialog id="delete-source-dialog" class="round">
+    <header>
+        <h5>Delete Source?</h5>
+    </header>
+    <p>This will permanently delete the source and all collected items. This action cannot be undone.</p>
+    <nav class="right-align">
+        <button class="border round" onclick="this.closest('dialog').close()">Cancel</button>
+        <button id="confirm-delete-source-btn" class="round error"
+                hx-swap="outerHTML swap:1s"
+                hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); showToast('Source deleted', 'success'); }">
+            <i>delete</i>
+            <span>Delete</span>
+        </button>
+    </nav>
+</dialog>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const credentialsTemplates = {
+    jira: `
+        <div class="field label border round">
+            <input type="url" name="credentials.server_url" required placeholder="https://your-domain.atlassian.net">
+            <label>Jira Server URL</label>
+        </div>
+        <div class="field label border round">
+            <input type="email" name="credentials.email" required>
+            <label>Email</label>
+        </div>
+        <div class="field label border round">
+            <input type="password" name="credentials.api_token" required>
+            <label>API Token</label>
+        </div>
+    `,
+    slack: `
+        <div class="field label border round">
+            <input type="password" name="credentials.bot_token" required placeholder="xoxb-...">
+            <label>Bot Token</label>
+        </div>
+        <div class="field label border round">
+            <input type="text" name="config.channels" placeholder="general,random">
+            <label>Channels (comma-separated, optional)</label>
+        </div>
+    `,
+    gmail: `
+        <div class="field label border round">
+            <textarea name="credentials.credentials_json" required rows="4" placeholder='{"type": "service_account", ...}'></textarea>
+            <label>Service Account JSON</label>
+        </div>
+        <div class="field label border round">
+            <input type="email" name="credentials.delegated_email" required>
+            <label>Delegated Email</label>
+        </div>
+    `,
+    google_calendar: `
+        <div class="field label border round">
+            <textarea name="credentials.credentials_json" required rows="4" placeholder='{"type": "service_account", ...}'></textarea>
+            <label>Service Account JSON</label>
+        </div>
+        <div class="field label border round">
+            <input type="email" name="credentials.delegated_email" required>
+            <label>Delegated Email</label>
+        </div>
+    `,
+    outlook_mail: `
+        <div class="field label border round">
+            <input type="password" name="credentials.access_token" required>
+            <label>Access Token</label>
+        </div>
+        <div class="field label border round">
+            <input type="password" name="credentials.refresh_token">
+            <label>Refresh Token (optional)</label>
+        </div>
+    `,
+    outlook_calendar: `
+        <div class="field label border round">
+            <input type="password" name="credentials.access_token" required>
+            <label>Access Token</label>
+        </div>
+        <div class="field label border round">
+            <input type="password" name="credentials.refresh_token">
+            <label>Refresh Token (optional)</label>
+        </div>
+    `,
+    teams: `
+        <div class="field label border round">
+            <input type="password" name="credentials.access_token" required>
+            <label>Access Token</label>
+        </div>
+        <div class="field label border round">
+            <input type="text" name="config.team_id">
+            <label>Team ID (optional)</label>
+        </div>
+    `
+};
+
+function showCredentialsFields(sourceType) {
+    const container = document.getElementById('credentials-fields');
+    container.innerHTML = credentialsTemplates[sourceType] || '';
+}
+
+function filterByProject(projectId) {
+    const url = new URL(window.location.href);
+    if (projectId) {
+        url.searchParams.set('project', projectId);
+    } else {
+        url.searchParams.delete('project');
+    }
+    window.location.href = url.toString();
+}
+
+function editSource(id, name, isActive) {
+    document.getElementById('edit-source-id').value = id;
+    document.getElementById('edit-source-name').value = name;
+    document.getElementById('edit-source-active').checked = isActive;
+    document.getElementById('edit-source-form').setAttribute('hx-put', `/web/api/sources/${id}`);
+    document.getElementById('edit-source-form').setAttribute('hx-target', `#source-${id}`);
+    htmx.process(document.getElementById('edit-source-form'));
+    document.getElementById('edit-source-dialog').showModal();
+}
+
+function confirmDeleteSource(id) {
+    document.getElementById('confirm-delete-source-btn').setAttribute('hx-delete', `/web/api/sources/${id}`);
+    document.getElementById('confirm-delete-source-btn').setAttribute('hx-target', `#source-${id}`);
+    htmx.process(document.getElementById('confirm-delete-source-btn'));
+    document.getElementById('delete-source-dialog').showModal();
+}
+
+function testCredentials(id) {
+    const btn = event.target.closest('button');
+    btn.innerHTML = '<progress class="circle small"></progress>';
+    fetch(`/web/api/sources/${id}/test`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.valid) {
+                showToast('Credentials are valid!', 'success');
+            } else {
+                showToast('Credentials invalid: ' + (data.error || 'Unknown error'), 'error');
+            }
+        })
+        .catch(() => showToast('Failed to test credentials', 'error'))
+        .finally(() => {
+            btn.innerHTML = '<i>verified</i><span>Test</span>';
+        });
+}
+</script>
+{% endblock %}

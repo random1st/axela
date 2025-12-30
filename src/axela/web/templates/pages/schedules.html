@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}Schedules - Axela{% endblock %}
+
+{% block content %}
+<header class="row small-margin">
+    <div class="max">
+        <h4>Schedules</h4>
+        <p class="secondary-text">Configure when to send digests</p>
+    </div>
+    <button class="circle large" onclick="document.getElementById('new-schedule-dialog').showModal()">
+        <i>add</i>
+    </button>
+</header>
+
+<!-- Schedules List -->
+<div id="schedules-list" class="card-grid">
+    {% for schedule in schedules %}
+    {% include "components/schedule_card.html" %}
+    {% else %}
+    <article class="surface round padding">
+        <div class="center-align">
+            <i class="extra large secondary-text">schedule</i>
+            <h6>No schedules yet</h6>
+            <p class="secondary-text">Create a schedule to automatically receive digests.</p>
+            <button class="round" onclick="document.getElementById('new-schedule-dialog').showModal()">
+                <i>add</i>
+                <span>Create Schedule</span>
+            </button>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+
+<!-- New Schedule Dialog -->
+<dialog id="new-schedule-dialog" class="round large">
+    <header class="row">
+        <h5 class="max">New Schedule</h5>
+        <button class="circle transparent" onclick="this.closest('dialog').close()">
+            <i>close</i>
+        </button>
+    </header>
+    <form hx-post="/web/api/schedules"
+          hx-target="#schedules-list"
+          hx-swap="afterbegin"
+          hx-on::after-request="if(event.detail.successful) { this.reset(); this.closest('dialog').close(); showToast('Schedule created!', 'success'); }">
+
+        <div class="field label border round">
+            <input type="text" name="name" required minlength="1" maxlength="100">
+            <label>Schedule Name</label>
+        </div>
+
+        <div class="grid">
+            <div class="s12 m6">
+                <div class="field label suffix border round">
+                    <select name="digest_type" required>
+                        <option value="morning">Morning Digest</option>
+                        <option value="evening">Evening Digest</option>
+                    </select>
+                    <label>Digest Type</label>
+                    <i>arrow_drop_down</i>
+                </div>
+            </div>
+            <div class="s12 m6">
+                <div class="field label border round">
+                    <input type="text" name="cron_expression" required placeholder="0 9 * * 1-5" pattern="[0-9*,\-/\s]+">
+                    <label>Cron Expression</label>
+                    <span class="helper">e.g., 0 9 * * 1-5 (9 AM weekdays)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="field label border round">
+            <input type="text" name="timezone" value="UTC" placeholder="Europe/Moscow">
+            <label>Timezone</label>
+        </div>
+
+        {% if projects %}
+        <div class="medium-margin">
+            <p class="bold">Filter by Projects (optional)</p>
+            <p class="secondary-text small-text">Leave empty to include all projects</p>
+            <div class="grid">
+                {% for project in projects %}
+                <div class="s12 m6 l4">
+                    <label class="checkbox">
+                        <input type="checkbox" name="project_ids" value="{{ project.id }}">
+                        <span>{{ project.name }}</span>
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <nav class="right-align">
+            <button type="button" class="border round" onclick="this.closest('dialog').close()">Cancel</button>
+            <button type="submit" class="round">
+                <i>check</i>
+                <span>Create</span>
+            </button>
+        </nav>
+    </form>
+</dialog>
+
+<!-- Edit Schedule Dialog -->
+<dialog id="edit-schedule-dialog" class="round large">
+    <header class="row">
+        <h5 class="max">Edit Schedule</h5>
+        <button class="circle transparent" onclick="this.closest('dialog').close()">
+            <i>close</i>
+        </button>
+    </header>
+    <form id="edit-schedule-form"
+          hx-swap="outerHTML"
+          hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); showToast('Schedule updated!', 'success'); }">
+        <input type="hidden" name="id" id="edit-schedule-id">
+
+        <div class="field label border round">
+            <input type="text" name="name" id="edit-schedule-name" required minlength="1" maxlength="100">
+            <label>Schedule Name</label>
+        </div>
+
+        <div class="grid">
+            <div class="s12 m6">
+                <div class="field label suffix border round">
+                    <select name="digest_type" id="edit-schedule-digest-type" required>
+                        <option value="morning">Morning Digest</option>
+                        <option value="evening">Evening Digest</option>
+                    </select>
+                    <label>Digest Type</label>
+                    <i>arrow_drop_down</i>
+                </div>
+            </div>
+            <div class="s12 m6">
+                <div class="field label border round">
+                    <input type="text" name="cron_expression" id="edit-schedule-cron" required>
+                    <label>Cron Expression</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="field label border round">
+            <input type="text" name="timezone" id="edit-schedule-timezone">
+            <label>Timezone</label>
+        </div>
+
+        <div class="field">
+            <label class="switch">
+                <input type="checkbox" name="is_active" id="edit-schedule-active">
+                <span>Active</span>
+            </label>
+        </div>
+
+        <nav class="right-align">
+            <button type="button" class="border round" onclick="this.closest('dialog').close()">Cancel</button>
+            <button type="submit" class="round">
+                <i>check</i>
+                <span>Save</span>
+            </button>
+        </nav>
+    </form>
+</dialog>
+
+<!-- Delete Confirmation Dialog -->
+<dialog id="delete-schedule-dialog" class="round">
+    <header>
+        <h5>Delete Schedule?</h5>
+    </header>
+    <p>This will permanently delete the schedule. You will no longer receive automatic digests from this schedule.</p>
+    <nav class="right-align">
+        <button class="border round" onclick="this.closest('dialog').close()">Cancel</button>
+        <button id="confirm-delete-schedule-btn" class="round error"
+                hx-swap="outerHTML swap:1s"
+                hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); showToast('Schedule deleted', 'success'); }">
+            <i>delete</i>
+            <span>Delete</span>
+        </button>
+    </nav>
+</dialog>
+
+<!-- Cron Help -->
+<article class="surface-variant round padding medium-margin">
+    <h6><i>help</i> Cron Expression Examples</h6>
+    <div class="grid">
+        <div class="s12 m6 l4">
+            <code>0 9 * * 1-5</code>
+            <p class="secondary-text small-text">9:00 AM, Monday-Friday</p>
+        </div>
+        <div class="s12 m6 l4">
+            <code>0 18 * * *</code>
+            <p class="secondary-text small-text">6:00 PM, every day</p>
+        </div>
+        <div class="s12 m6 l4">
+            <code>0 8,18 * * *</code>
+            <p class="secondary-text small-text">8:00 AM and 6:00 PM</p>
+        </div>
+    </div>
+</article>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function editSchedule(id, name, digestType, cron, timezone, isActive) {
+    document.getElementById('edit-schedule-id').value = id;
+    document.getElementById('edit-schedule-name').value = name;
+    document.getElementById('edit-schedule-digest-type').value = digestType;
+    document.getElementById('edit-schedule-cron').value = cron;
+    document.getElementById('edit-schedule-timezone').value = timezone || 'UTC';
+    document.getElementById('edit-schedule-active').checked = isActive;
+    document.getElementById('edit-schedule-form').setAttribute('hx-put', `/web/api/schedules/${id}`);
+    document.getElementById('edit-schedule-form').setAttribute('hx-target', `#schedule-${id}`);
+    htmx.process(document.getElementById('edit-schedule-form'));
+    document.getElementById('edit-schedule-dialog').showModal();
+}
+
+function confirmDeleteSchedule(id) {
+    document.getElementById('confirm-delete-schedule-btn').setAttribute('hx-delete', `/web/api/schedules/${id}`);
+    document.getElementById('confirm-delete-schedule-btn').setAttribute('hx-target', `#schedule-${id}`);
+    htmx.process(document.getElementById('confirm-delete-schedule-btn'));
+    document.getElementById('delete-schedule-dialog').showModal();
+}
+</script>
+{% endblock %}

@@ -16,6 +16,8 @@ from axela.infrastructure.bus.memory import InMemoryMessageBus
 from axela.infrastructure.database.repository import SettingsRepositoryImpl
 from axela.infrastructure.database.session import get_async_session_factory
 from axela.infrastructure.telegram.bot import DigestBot
+from axela.web.routes import api_router as web_api_router
+from axela.web.routes import router as web_router
 
 from .deps import (
     set_error_alert_service,
@@ -120,12 +122,16 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Include routers
+    # Include API routers
     app.include_router(health.router)
     app.include_router(projects.router, prefix="/api/v1")
     app.include_router(sources.router, prefix="/api/v1")
     app.include_router(settings.router, prefix="/api/v1")
     app.include_router(schedules.router, prefix="/api/v1")
+
+    # Include Web frontend routers
+    app.include_router(web_router)
+    app.include_router(web_api_router)
 
     return app
 

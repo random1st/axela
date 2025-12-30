@@ -11,6 +11,7 @@ dependencies = [
     # Web framework
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
+    "jinja2>=3.1.0",
     # Database
     "sqlalchemy[asyncio]>=2.0.36",
     "asyncpg>=0.30.0",
@@ -161,6 +162,15 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "hach/runtime/lifespan.py" = ["PLR0912", "PLR0915"]
 "alembic/versions/*" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107", "I001"]
 "alembic/env.py" = ["E402", "I001"]
+# Web frontend routes with HTMX patterns
+"src/axela/web/**" = [
+    "D401",   # Imperative mood docstrings not required for page handlers
+    "FAST002", # Form() without Annotated is fine for web forms
+    "ARG001", # Request argument may be unused in some handlers
+    "TRY300", # Return in try block is fine for simple validation
+    "TD002", "TD003", "FIX002",  # TODO comments without author/issue link OK
+    "FBT002", # Boolean default in form fields is fine for HTMX
+]
 # Settings views are simple facade classes where property names are self-documenting
 "hach/config/settings.py" = ["D102", "D107"]
 
