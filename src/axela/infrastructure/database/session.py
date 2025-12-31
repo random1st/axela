@@ -21,6 +21,9 @@ def get_async_engine() -> AsyncEngine:
     """
     settings = get_settings()
 
+    # database_url is always set after model_validator runs
+    assert settings.database_url is not None
+
     if settings.is_sqlite:
         # SQLite configuration (no connection pooling)
         return create_async_engine(

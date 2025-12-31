@@ -1,27 +1,11 @@
 """Configuration management using Pydantic Settings."""
 
-import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, cast
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-
-def _get_default_database_url() -> str:
-    """Get default database URL.
-
-    If AXELA_DATABASE_URL is set, use it.
-    Otherwise, fall back to SQLite for easy local development.
-    """
-    env_url = os.environ.get("AXELA_DATABASE_URL")
-    if env_url:
-        return env_url
-
-    # Default to SQLite in current directory
-    db_path = Path.cwd() / "axela.db"
-    return f"sqlite+aiosqlite:///{db_path}"
 
 
 class Settings(BaseSettings):
@@ -34,20 +18,40 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
-    # Database (defaults to SQLite if AXELA_DATABASE_URL not set)
-    database_url: str = Field(
-        default_factory=_get_default_database_url,
-        description="Database connection URL (PostgreSQL or SQLite)",
+    # Data directory for SQLite and other persistent files
+    data_dir: Path = Field(
+        default=Path("/data"),
+        description="Directory for persistent data (SQLite DB, etc.)",
     )
+
+    # Database (defaults to SQLite in data_dir if not set)
+    database_url: str | None = Field(
+        default=None,
+        description="Database connection URL (PostgreSQL or SQLite). If not set, uses SQLite in data_dir.",
+    )
+
+    @model_validator(mode="after")
+    def set_default_database_url(self) -> "Settings":
+        """Set default database URL if not provided."""
+        if self.database_url is None:
+            # Ensure data_dir exists
+            self.data_dir.mkdir(parents=True, exist_ok=True)
+            db_path = self.data_dir / "axela.db"
+            object.__setattr__(self, "database_url", f"sqlite+aiosqlite:///{db_path}")
+        return self
 
     @property
     def is_sqlite(self) -> bool:
         """Check if using SQLite database."""
-        return self.database_url.startswith("sqlite")
+        # database_url is always set after model_validator runs
+        return self.database_url is not None and self.database_url.startswith("sqlite")
 
     @property
     def is_postgres(self) -> bool:
         """Check if using PostgreSQL database."""
+        # database_url is always set after model_validator runs
+        if self.database_url is None:
+            return False
         return "postgresql" in self.database_url or "postgres" in self.database_url
 
     # Telegram (chat_id is stored in DB settings, configurable via API)

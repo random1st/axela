@@ -374,9 +374,7 @@ class TestSourcesAPI:
         updated_source.created_at = datetime.now(UTC)
 
         mock_source_repo.update.return_value = updated_source
-        mock_project_repo.get_by_id.return_value = Project(
-            id=project_id, name="Test", created_at=datetime.now(UTC)
-        )
+        mock_project_repo.get_by_id.return_value = Project(id=project_id, name="Test", created_at=datetime.now(UTC))
 
         response = await client.put(
             f"/web/api/sources/{source_id}",

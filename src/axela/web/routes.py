@@ -445,17 +445,17 @@ async def create_setting(
 
     return HTMLResponse(
         content=f"""
-        <div id="setting-{key.replace('.', '-')}" class="row small-padding border-bottom">
+        <div id="setting-{key.replace(".", "-")}" class="row small-padding border-bottom">
             <div class="max">
                 <p class="bold">{key}</p>
-                <p class="secondary-text small-text">{value[:50]}{'...' if len(value) > 50 else ''}</p>
+                <p class="secondary-text small-text">{value[:50]}{"..." if len(value) > 50 else ""}</p>
             </div>
             <button class="circle transparent small" onclick="editSetting('{key}', '{value}')">
                 <i>edit</i>
             </button>
             <button class="circle transparent small"
                     hx-delete="/web/api/settings/{key}"
-                    hx-target="#setting-{key.replace('.', '-')}"
+                    hx-target="#setting-{key.replace(".", "-")}"
                     hx-swap="outerHTML"
                     hx-confirm="Delete setting '{key}'?">
                 <i>delete</i>

@@ -35,6 +35,10 @@ FROM base AS production
 # Copy virtual environment from dependencies stage
 COPY --from=dependencies /app/.venv /app/.venv
 
+# Create data directory for SQLite and persistent files
+RUN mkdir -p /data && chown axela:axela /data
+VOLUME /data
+
 # Copy source code
 COPY src/ src/
 COPY alembic/ alembic/

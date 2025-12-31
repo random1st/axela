@@ -52,9 +52,7 @@ class SourceModel(Base):
     __tablename__ = "sources"
 
     id: Mapped[UUID] = mapped_column(GUID, primary_key=True, default=uuid4)
-    project_id: Mapped[UUID] = mapped_column(
-        GUID, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
-    )
+    project_id: Mapped[UUID] = mapped_column(GUID, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     source_type: Mapped[str] = mapped_column(String(50), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     credentials: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
@@ -85,9 +83,7 @@ class ItemModel(Base):
     )
 
     id: Mapped[UUID] = mapped_column(GUID, primary_key=True, default=uuid4)
-    source_id: Mapped[UUID] = mapped_column(
-        GUID, ForeignKey("sources.id", ondelete="CASCADE"), nullable=False
-    )
+    source_id: Mapped[UUID] = mapped_column(GUID, ForeignKey("sources.id", ondelete="CASCADE"), nullable=False)
     external_id: Mapped[str] = mapped_column(String(255), nullable=False)
     item_type: Mapped[str] = mapped_column(String(50), nullable=False)
     title: Mapped[str | None] = mapped_column(Text)
@@ -140,12 +136,8 @@ class DigestItemModel(Base):
     __table_args__ = (UniqueConstraint("digest_id", "item_id", name="uq_digest_items"),)
 
     id: Mapped[UUID] = mapped_column(GUID, primary_key=True, default=uuid4)
-    digest_id: Mapped[UUID] = mapped_column(
-        GUID, ForeignKey("digests.id", ondelete="CASCADE"), nullable=False
-    )
-    item_id: Mapped[UUID] = mapped_column(
-        GUID, ForeignKey("items.id", ondelete="CASCADE"), nullable=False
-    )
+    digest_id: Mapped[UUID] = mapped_column(GUID, ForeignKey("digests.id", ondelete="CASCADE"), nullable=False)
+    item_id: Mapped[UUID] = mapped_column(GUID, ForeignKey("items.id", ondelete="CASCADE"), nullable=False)
     content_hash_at_send: Mapped[str] = mapped_column(String(64), nullable=False)
 
     # Relationships
@@ -183,9 +175,7 @@ class CollectorErrorModel(Base):
     __tablename__ = "collector_errors"
 
     id: Mapped[UUID] = mapped_column(GUID, primary_key=True, default=uuid4)
-    source_id: Mapped[UUID] = mapped_column(
-        GUID, ForeignKey("sources.id", ondelete="CASCADE"), nullable=False
-    )
+    source_id: Mapped[UUID] = mapped_column(GUID, ForeignKey("sources.id", ondelete="CASCADE"), nullable=False)
     error_type: Mapped[str | None] = mapped_column(String(100))
     error_message: Mapped[str | None] = mapped_column(Text)
     resolved: Mapped[bool] = mapped_column(Boolean, default=False)
