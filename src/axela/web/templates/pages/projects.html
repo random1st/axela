@@ -1,132 +1,94 @@
 {% extends "base.html" %}
 
-{% block title %}Projects - Axela{% endblock %}
+{% block header_title %}Проекты{% endblock %}
 
 {% block content %}
-<header class="row small-margin">
-    <div class="max">
-        <h4>Projects</h4>
-        <p class="secondary-text">Manage your digest projects</p>
-    </div>
-    <button class="circle large" onclick="document.getElementById('new-project-dialog').showModal()">
-        <i>add</i>
-    </button>
-</header>
-
-<!-- Projects List -->
-<div id="projects-list" class="card-grid">
+{% if not projects %}
+<div class="empty-state">
+    <i>folder_off</i>
+    <h5 style="margin-top: 16px;">Нет проектов</h5>
+    <p class="secondary-text">Создайте первый проект для организации источников</p>
+</div>
+{% else %}
+<div class="card">
     {% for project in projects %}
-    {% include "components/project_card.html" %}
-    {% else %}
-    <article class="surface round padding">
-        <div class="center-align">
-            <i class="extra large secondary-text">folder_off</i>
-            <h6>No projects yet</h6>
-            <p class="secondary-text">Create your first project to start organizing your sources.</p>
-            <button class="round" onclick="document.getElementById('new-project-dialog').showModal()">
-                <i>add</i>
-                <span>Create Project</span>
-            </button>
+    <div class="list-tile" id="project-{{ project.id }}">
+        <div class="leading" style="{% if project.color %}background: {{ project.color }};{% endif %}">
+            <i style="{% if project.color %}color: white;{% endif %}">folder</i>
         </div>
-    </article>
+        <div class="content">
+            <p class="title">{{ project.name }}</p>
+            <p class="subtitle">{{ project.created_at.strftime('%d.%m.%Y') }}</p>
+        </div>
+        <button class="circle transparent small" onclick="editProject('{{ project.id }}', '{{ project.name }}', '{{ project.color or '' }}')">
+            <i>edit</i>
+        </button>
+    </div>
+    {% if not loop.last %}<div class="divider" style="margin-left: 72px;"></div>{% endif %}
     {% endfor %}
 </div>
+{% endif %}
+
+<!-- FAB -->
+<button class="fab primary" onclick="document.getElementById('new-project-dialog').showModal()">
+    <i>add</i>
+</button>
 
 <!-- New Project Dialog -->
-<dialog id="new-project-dialog" class="round">
-    <header class="row">
-        <h5 class="max">New Project</h5>
-        <button class="circle transparent" onclick="this.closest('dialog').close()">
-            <i>close</i>
-        </button>
-    </header>
+<dialog id="new-project-dialog" class="round" style="max-width: 360px; width: calc(100% - 32px);">
+    <h5>Новый проект</h5>
     <form hx-post="/web/api/projects"
-          hx-target="#projects-list"
-          hx-swap="afterbegin"
-          hx-on::after-request="if(event.detail.successful) { this.reset(); this.closest('dialog').close(); showToast('Project created!', 'success'); }">
+          hx-swap="none"
+          hx-on::after-request="if(event.detail.successful) { this.reset(); this.closest('dialog').close(); location.reload(); }">
         <div class="field label border round">
             <input type="text" name="name" required minlength="1" maxlength="100">
-            <label>Project Name</label>
+            <label>Название</label>
         </div>
         <div class="field label border round">
-            <input type="color" name="color" value="#6750A4">
-            <label>Color</label>
+            <input type="color" name="color" value="#6750A4" style="height: 48px;">
+            <label>Цвет</label>
         </div>
-        <nav class="right-align">
-            <button type="button" class="border round" onclick="this.closest('dialog').close()">Cancel</button>
-            <button type="submit" class="round">
-                <i>check</i>
-                <span>Create</span>
-            </button>
+        <nav class="right-align" style="margin-top: 16px;">
+            <button type="button" class="border round" onclick="this.closest('dialog').close()">Отмена</button>
+            <button type="submit" class="round">Создать</button>
         </nav>
     </form>
 </dialog>
 
 <!-- Edit Project Dialog -->
-<dialog id="edit-project-dialog" class="round">
-    <header class="row">
-        <h5 class="max">Edit Project</h5>
-        <button class="circle transparent" onclick="this.closest('dialog').close()">
-            <i>close</i>
-        </button>
-    </header>
+<dialog id="edit-project-dialog" class="round" style="max-width: 360px; width: calc(100% - 32px);">
+    <h5>Редактировать</h5>
     <form id="edit-project-form"
-          hx-swap="outerHTML"
-          hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); showToast('Project updated!', 'success'); }">
-        <input type="hidden" name="id" id="edit-project-id">
+          hx-swap="none"
+          hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); location.reload(); }">
         <div class="field label border round">
-            <input type="text" name="name" id="edit-project-name" required minlength="1" maxlength="100">
-            <label>Project Name</label>
+            <input type="text" name="name" id="edit-project-name" required>
+            <label>Название</label>
         </div>
         <div class="field label border round">
-            <input type="color" name="color" id="edit-project-color">
-            <label>Color</label>
+            <input type="color" name="color" id="edit-project-color" style="height: 48px;">
+            <label>Цвет</label>
         </div>
-        <nav class="right-align">
-            <button type="button" class="border round" onclick="this.closest('dialog').close()">Cancel</button>
-            <button type="submit" class="round">
-                <i>check</i>
-                <span>Save</span>
-            </button>
+        <nav class="right-align" style="margin-top: 16px;">
+            <button type="button" class="border round" onclick="this.closest('dialog').close()">Отмена</button>
+            <button type="submit" class="round">Сохранить</button>
         </nav>
     </form>
-</dialog>
-
-<!-- Delete Confirmation Dialog -->
-<dialog id="delete-project-dialog" class="round">
-    <header>
-        <h5>Delete Project?</h5>
-    </header>
-    <p>This will permanently delete the project and all its sources. This action cannot be undone.</p>
-    <nav class="right-align">
-        <button class="border round" onclick="this.closest('dialog').close()">Cancel</button>
-        <button id="confirm-delete-btn" class="round error"
-                hx-swap="outerHTML swap:1s"
-                hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); showToast('Project deleted', 'success'); }">
-            <i>delete</i>
-            <span>Delete</span>
-        </button>
-    </nav>
 </dialog>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
 function editProject(id, name, color) {
-    document.getElementById('edit-project-id').value = id;
     document.getElementById('edit-project-name').value = name;
     document.getElementById('edit-project-color').value = color || '#6750A4';
     document.getElementById('edit-project-form').setAttribute('hx-put', `/web/api/projects/${id}`);
-    document.getElementById('edit-project-form').setAttribute('hx-target', `#project-${id}`);
     htmx.process(document.getElementById('edit-project-form'));
     document.getElementById('edit-project-dialog').showModal();
 }
 
-function confirmDelete(id) {
-    document.getElementById('confirm-delete-btn').setAttribute('hx-delete', `/web/api/projects/${id}`);
-    document.getElementById('confirm-delete-btn').setAttribute('hx-target', `#project-${id}`);
-    htmx.process(document.getElementById('confirm-delete-btn'));
-    document.getElementById('delete-project-dialog').showModal();
+if (new URLSearchParams(window.location.search).get('action') === 'new') {
+    document.getElementById('new-project-dialog').showModal();
 }
 </script>
 {% endblock %}

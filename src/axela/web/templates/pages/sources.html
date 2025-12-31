@@ -1,179 +1,166 @@
 {% extends "base.html" %}
 
-{% block title %}Sources - Axela{% endblock %}
+{% block header_title %}Источники{% endblock %}
 
 {% block content %}
-<header class="row small-margin">
-    <div class="max">
-        <h4>Sources</h4>
-        <p class="secondary-text">Configure data sources for your digests</p>
-    </div>
-    <button class="circle large" onclick="document.getElementById('new-source-dialog').showModal()"
-            {% if not projects %}disabled{% endif %}>
-        <i>add</i>
-    </button>
-</header>
-
 {% if not projects %}
-<article class="surface round padding medium-margin">
-    <div class="center-align">
-        <i class="extra large secondary-text">folder_off</i>
-        <h6>No projects available</h6>
-        <p class="secondary-text">Create a project first before adding sources.</p>
-        <a href="{{ url_for('projects_list') }}" class="button round">
-            <i>folder</i>
-            <span>Go to Projects</span>
-        </a>
-    </div>
-</article>
+<div class="empty-state">
+    <i>folder_off</i>
+    <h5 style="margin-top: 16px;">Нет проектов</h5>
+    <p class="secondary-text">Сначала создайте проект</p>
+    <button class="large round" onclick="location.href='{{ url_for('projects_list') }}?action=new'" style="margin-top: 24px;">
+        <i>folder</i>
+        <span>Создать проект</span>
+    </button>
+</div>
 {% else %}
 
-<!-- Filter by Project -->
-<div class="small-margin">
-    <div class="field suffix border round">
-        <select id="project-filter" onchange="filterByProject(this.value)">
-            <option value="">All Projects</option>
-            {% for project in projects %}
-            <option value="{{ project.id }}" {% if selected_project == project.id|string %}selected{% endif %}>
-                {{ project.name }}
-            </option>
-            {% endfor %}
-        </select>
-        <i>arrow_drop_down</i>
+<!-- Project Filter -->
+<div class="card" style="margin-bottom: 16px;">
+    <div style="padding: 12px 16px;">
+        <div class="field suffix border round" style="margin: 0;">
+            <select id="project-filter" onchange="filterByProject(this.value)">
+                <option value="">Все проекты</option>
+                {% for project in projects %}
+                <option value="{{ project.id }}" {% if selected_project == project.id|string %}selected{% endif %}>
+                    {{ project.name }}
+                </option>
+                {% endfor %}
+            </select>
+            <i>arrow_drop_down</i>
+        </div>
     </div>
 </div>
 
-<!-- Sources List -->
-<div id="sources-list" class="card-grid">
+{% if not sources %}
+<div class="empty-state">
+    <i>cloud_off</i>
+    <h5 style="margin-top: 16px;">Нет источников</h5>
+    <p class="secondary-text">Добавьте первый источник данных</p>
+</div>
+{% else %}
+<div class="card">
     {% for source in sources %}
-    {% include "components/source_card.html" %}
-    {% else %}
-    <article class="surface round padding">
-        <div class="center-align">
-            <i class="extra large secondary-text">cloud_off</i>
-            <h6>No sources yet</h6>
-            <p class="secondary-text">Add your first data source to start collecting updates.</p>
-            <button class="round" onclick="document.getElementById('new-source-dialog').showModal()">
-                <i>add</i>
-                <span>Add Source</span>
-            </button>
+    <div class="list-tile" id="source-{{ source.id }}">
+        <div class="leading" style="background: {% if source.is_active %}var(--primary){% else %}var(--outline){% endif %};">
+            <i style="color: white;">{% if source.source_type == 'jira' %}bug_report{% elif source.source_type == 'slack' %}tag{% elif source.source_type == 'gmail' %}mail{% elif source.source_type == 'google_calendar' %}calendar_month{% elif source.source_type == 'outlook_mail' %}mail{% elif source.source_type == 'outlook_calendar' %}calendar_month{% elif source.source_type == 'teams' %}groups{% else %}cloud{% endif %}</i>
         </div>
-    </article>
+        <div class="content">
+            <p class="title">{{ source.name }}</p>
+            <p class="subtitle">{{ source.source_type | replace('_', ' ') | title }} · {{ source.project_name }}</p>
+        </div>
+        <button class="circle transparent small" onclick="showSourceMenu('{{ source.id }}', '{{ source.name }}', {{ source.is_active | lower }})">
+            <i>more_vert</i>
+        </button>
+    </div>
+    {% if not loop.last %}<div class="divider" style="margin-left: 72px;"></div>{% endif %}
     {% endfor %}
 </div>
+{% endif %}
+
+<!-- FAB -->
+<button class="fab primary" onclick="document.getElementById('new-source-dialog').showModal()">
+    <i>add</i>
+</button>
 
 <!-- New Source Dialog -->
-<dialog id="new-source-dialog" class="round large">
-    <header class="row">
-        <h5 class="max">Add New Source</h5>
-        <button class="circle transparent" onclick="this.closest('dialog').close()">
-            <i>close</i>
-        </button>
-    </header>
+<dialog id="new-source-dialog" class="round" style="max-width: 360px; width: calc(100% - 32px);">
+    <h5>Новый источник</h5>
     <form hx-post="/web/api/sources"
-          hx-target="#sources-list"
-          hx-swap="afterbegin"
-          hx-on::after-request="if(event.detail.successful) { this.reset(); this.closest('dialog').close(); showToast('Source added!', 'success'); }">
+          hx-swap="none"
+          hx-on::after-request="if(event.detail.successful) { this.reset(); this.closest('dialog').close(); location.reload(); }">
 
-        <div class="grid">
-            <div class="s12 m6">
-                <div class="field label suffix border round">
-                    <select name="project_id" required>
-                        <option value="">Select Project</option>
-                        {% for project in projects %}
-                        <option value="{{ project.id }}">{{ project.name }}</option>
-                        {% endfor %}
-                    </select>
-                    <label>Project</label>
-                    <i>arrow_drop_down</i>
-                </div>
-            </div>
-            <div class="s12 m6">
-                <div class="field label suffix border round">
-                    <select name="source_type" required onchange="showCredentialsFields(this.value)">
-                        <option value="">Select Type</option>
-                        <option value="jira">Jira</option>
-                        <option value="slack">Slack</option>
-                        <option value="gmail">Gmail</option>
-                        <option value="google_calendar">Google Calendar</option>
-                        <option value="outlook_mail">Outlook Mail</option>
-                        <option value="outlook_calendar">Outlook Calendar</option>
-                        <option value="teams">Microsoft Teams</option>
-                    </select>
-                    <label>Source Type</label>
-                    <i>arrow_drop_down</i>
-                </div>
-            </div>
+        <div class="field label suffix border round">
+            <select name="project_id" required>
+                <option value="">Выберите проект</option>
+                {% for project in projects %}
+                <option value="{{ project.id }}">{{ project.name }}</option>
+                {% endfor %}
+            </select>
+            <label>Проект</label>
+            <i>arrow_drop_down</i>
+        </div>
+
+        <div class="field label suffix border round">
+            <select name="source_type" required onchange="showCredentialsFields(this.value)">
+                <option value="">Выберите тип</option>
+                <option value="jira">Jira</option>
+                <option value="slack">Slack</option>
+                <option value="gmail">Gmail</option>
+                <option value="google_calendar">Google Calendar</option>
+                <option value="outlook_mail">Outlook Mail</option>
+                <option value="outlook_calendar">Outlook Calendar</option>
+                <option value="teams">Microsoft Teams</option>
+            </select>
+            <label>Тип источника</label>
+            <i>arrow_drop_down</i>
         </div>
 
         <div class="field label border round">
             <input type="text" name="name" required minlength="1" maxlength="100">
-            <label>Source Name</label>
+            <label>Название</label>
         </div>
 
-        <!-- Dynamic Credentials Fields -->
-        <div id="credentials-fields">
-            <!-- Fields will be inserted here based on source type -->
-        </div>
+        <div id="credentials-fields"></div>
 
-        <nav class="right-align">
-            <button type="button" class="border round" onclick="this.closest('dialog').close()">Cancel</button>
-            <button type="submit" class="round">
-                <i>check</i>
-                <span>Add Source</span>
-            </button>
+        <nav class="right-align" style="margin-top: 16px;">
+            <button type="button" class="border round" onclick="this.closest('dialog').close()">Отмена</button>
+            <button type="submit" class="round">Добавить</button>
         </nav>
     </form>
 </dialog>
 
+<!-- Source Actions Bottom Sheet -->
+<dialog id="source-actions-dialog" class="round" style="max-width: 360px; width: calc(100% - 32px);">
+    <h6 id="source-actions-title" style="margin-bottom: 16px;"></h6>
+    <div class="list-tile" onclick="testCurrentSource()">
+        <i>verified</i>
+        <div class="content"><p class="title">Проверить подключение</p></div>
+    </div>
+    <div class="list-tile" onclick="editCurrentSource()">
+        <i>edit</i>
+        <div class="content"><p class="title">Редактировать</p></div>
+    </div>
+    <div class="list-tile" onclick="deleteCurrentSource()" style="color: var(--error);">
+        <i>delete</i>
+        <div class="content"><p class="title">Удалить</p></div>
+    </div>
+    <nav class="right-align" style="margin-top: 16px;">
+        <button class="border round" onclick="this.closest('dialog').close()">Закрыть</button>
+    </nav>
+</dialog>
+
 <!-- Edit Source Dialog -->
-<dialog id="edit-source-dialog" class="round large">
-    <header class="row">
-        <h5 class="max">Edit Source</h5>
-        <button class="circle transparent" onclick="this.closest('dialog').close()">
-            <i>close</i>
-        </button>
-    </header>
+<dialog id="edit-source-dialog" class="round" style="max-width: 360px; width: calc(100% - 32px);">
+    <h5>Редактировать</h5>
     <form id="edit-source-form"
-          hx-swap="outerHTML"
-          hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); showToast('Source updated!', 'success'); }">
-        <input type="hidden" name="id" id="edit-source-id">
-
+          hx-swap="none"
+          hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); location.reload(); }">
         <div class="field label border round">
-            <input type="text" name="name" id="edit-source-name" required minlength="1" maxlength="100">
-            <label>Source Name</label>
+            <input type="text" name="name" id="edit-source-name" required>
+            <label>Название</label>
         </div>
-
-        <div class="field">
-            <label class="switch">
-                <input type="checkbox" name="is_active" id="edit-source-active">
-                <span>Active</span>
-            </label>
-        </div>
-
-        <nav class="right-align">
-            <button type="button" class="border round" onclick="this.closest('dialog').close()">Cancel</button>
-            <button type="submit" class="round">
-                <i>check</i>
-                <span>Save</span>
-            </button>
+        <label class="switch" style="margin: 16px 0;">
+            <input type="checkbox" name="is_active" id="edit-source-active">
+            <span>Активен</span>
+        </label>
+        <nav class="right-align" style="margin-top: 16px;">
+            <button type="button" class="border round" onclick="this.closest('dialog').close()">Отмена</button>
+            <button type="submit" class="round">Сохранить</button>
         </nav>
     </form>
 </dialog>
 
 <!-- Delete Confirmation Dialog -->
-<dialog id="delete-source-dialog" class="round">
-    <header>
-        <h5>Delete Source?</h5>
-    </header>
-    <p>This will permanently delete the source and all collected items. This action cannot be undone.</p>
-    <nav class="right-align">
-        <button class="border round" onclick="this.closest('dialog').close()">Cancel</button>
+<dialog id="delete-source-dialog" class="round" style="max-width: 320px; width: calc(100% - 32px);">
+    <h5>Удалить источник?</h5>
+    <p class="secondary-text">Все собранные данные будут удалены.</p>
+    <nav class="right-align" style="margin-top: 16px;">
+        <button class="border round" onclick="this.closest('dialog').close()">Отмена</button>
         <button id="confirm-delete-source-btn" class="round error"
-                hx-swap="outerHTML swap:1s"
-                hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); showToast('Source deleted', 'success'); }">
-            <i>delete</i>
-            <span>Delete</span>
+                hx-swap="none"
+                hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); location.reload(); }">
+            Удалить
         </button>
     </nav>
 </dialog>
@@ -186,7 +173,7 @@ const credentialsTemplates = {
     jira: `
         <div class="field label border round">
             <input type="url" name="credentials.server_url" required placeholder="https://your-domain.atlassian.net">
-            <label>Jira Server URL</label>
+            <label>URL сервера</label>
         </div>
         <div class="field label border round">
             <input type="email" name="credentials.email" required>
@@ -204,27 +191,27 @@ const credentialsTemplates = {
         </div>
         <div class="field label border round">
             <input type="text" name="config.channels" placeholder="general,random">
-            <label>Channels (comma-separated, optional)</label>
+            <label>Каналы (через запятую)</label>
         </div>
     `,
     gmail: `
         <div class="field label border round">
-            <textarea name="credentials.credentials_json" required rows="4" placeholder='{"type": "service_account", ...}'></textarea>
+            <textarea name="credentials.credentials_json" required rows="3"></textarea>
             <label>Service Account JSON</label>
         </div>
         <div class="field label border round">
             <input type="email" name="credentials.delegated_email" required>
-            <label>Delegated Email</label>
+            <label>Email для делегирования</label>
         </div>
     `,
     google_calendar: `
         <div class="field label border round">
-            <textarea name="credentials.credentials_json" required rows="4" placeholder='{"type": "service_account", ...}'></textarea>
+            <textarea name="credentials.credentials_json" required rows="3"></textarea>
             <label>Service Account JSON</label>
         </div>
         <div class="field label border round">
             <input type="email" name="credentials.delegated_email" required>
-            <label>Delegated Email</label>
+            <label>Email для делегирования</label>
         </div>
     `,
     outlook_mail: `
@@ -234,7 +221,7 @@ const credentialsTemplates = {
         </div>
         <div class="field label border round">
             <input type="password" name="credentials.refresh_token">
-            <label>Refresh Token (optional)</label>
+            <label>Refresh Token</label>
         </div>
     `,
     outlook_calendar: `
@@ -244,7 +231,7 @@ const credentialsTemplates = {
         </div>
         <div class="field label border round">
             <input type="password" name="credentials.refresh_token">
-            <label>Refresh Token (optional)</label>
+            <label>Refresh Token</label>
         </div>
     `,
     teams: `
@@ -254,14 +241,17 @@ const credentialsTemplates = {
         </div>
         <div class="field label border round">
             <input type="text" name="config.team_id">
-            <label>Team ID (optional)</label>
+            <label>Team ID</label>
         </div>
     `
 };
 
+let currentSourceId = null;
+let currentSourceName = null;
+let currentSourceActive = false;
+
 function showCredentialsFields(sourceType) {
-    const container = document.getElementById('credentials-fields');
-    container.innerHTML = credentialsTemplates[sourceType] || '';
+    document.getElementById('credentials-fields').innerHTML = credentialsTemplates[sourceType] || '';
 }
 
 function filterByProject(projectId) {
@@ -274,39 +264,60 @@ function filterByProject(projectId) {
     window.location.href = url.toString();
 }
 
-function editSource(id, name, isActive) {
-    document.getElementById('edit-source-id').value = id;
-    document.getElementById('edit-source-name').value = name;
-    document.getElementById('edit-source-active').checked = isActive;
-    document.getElementById('edit-source-form').setAttribute('hx-put', `/web/api/sources/${id}`);
-    document.getElementById('edit-source-form').setAttribute('hx-target', `#source-${id}`);
+function showSourceMenu(id, name, isActive) {
+    currentSourceId = id;
+    currentSourceName = name;
+    currentSourceActive = isActive;
+    document.getElementById('source-actions-title').textContent = name;
+    document.getElementById('source-actions-dialog').showModal();
+}
+
+function testCurrentSource() {
+    const dialog = document.getElementById('source-actions-dialog');
+    const testTile = dialog.querySelector('.list-tile');
+    const originalHtml = testTile.innerHTML;
+
+    // Show loading state
+    testTile.innerHTML = `
+        <progress class="circle small"></progress>
+        <div class="content"><p class="title">Проверяем...</p></div>
+    `;
+    testTile.style.pointerEvents = 'none';
+
+    fetch(`/web/api/sources/${currentSourceId}/test`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            dialog.close();
+            if (data.valid) {
+                showToast('Подключение работает!', 'success');
+            } else {
+                showToast('Ошибка: ' + (data.error || 'Неизвестная ошибка'), 'error');
+            }
+        })
+        .catch(() => {
+            dialog.close();
+            showToast('Не удалось проверить', 'error');
+        })
+        .finally(() => {
+            testTile.innerHTML = originalHtml;
+            testTile.style.pointerEvents = '';
+        });
+}
+
+function editCurrentSource() {
+    document.getElementById('source-actions-dialog').close();
+    document.getElementById('edit-source-name').value = currentSourceName;
+    document.getElementById('edit-source-active').checked = currentSourceActive;
+    document.getElementById('edit-source-form').setAttribute('hx-put', `/web/api/sources/${currentSourceId}`);
     htmx.process(document.getElementById('edit-source-form'));
     document.getElementById('edit-source-dialog').showModal();
 }
 
-function confirmDeleteSource(id) {
-    document.getElementById('confirm-delete-source-btn').setAttribute('hx-delete', `/web/api/sources/${id}`);
-    document.getElementById('confirm-delete-source-btn').setAttribute('hx-target', `#source-${id}`);
+function deleteCurrentSource() {
+    document.getElementById('source-actions-dialog').close();
+    document.getElementById('confirm-delete-source-btn').setAttribute('hx-delete', `/web/api/sources/${currentSourceId}`);
     htmx.process(document.getElementById('confirm-delete-source-btn'));
     document.getElementById('delete-source-dialog').showModal();
-}
-
-function testCredentials(id) {
-    const btn = event.target.closest('button');
-    btn.innerHTML = '<progress class="circle small"></progress>';
-    fetch(`/web/api/sources/${id}/test`, { method: 'POST' })
-        .then(r => r.json())
-        .then(data => {
-            if (data.valid) {
-                showToast('Credentials are valid!', 'success');
-            } else {
-                showToast('Credentials invalid: ' + (data.error || 'Unknown error'), 'error');
-            }
-        })
-        .catch(() => showToast('Failed to test credentials', 'error'))
-        .finally(() => {
-            btn.innerHTML = '<i>verified</i><span>Test</span>';
-        });
 }
 </script>
 {% endblock %}

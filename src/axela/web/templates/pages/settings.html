@@ -1,207 +1,94 @@
 {% extends "base.html" %}
 
-{% block title %}Settings - Axela{% endblock %}
+{% block header_title %}Настройки{% endblock %}
 
 {% block content %}
-<header class="small-margin">
-    <h4>Settings</h4>
-    <p class="secondary-text">Configure your Axela instance</p>
-</header>
-
 <!-- Telegram Settings -->
-<article class="surface round medium-margin">
-    <div class="padding">
-        <h5><i>send</i> Telegram</h5>
-        <p class="secondary-text">Configure Telegram bot for digest delivery</p>
-    </div>
-    <div class="divider"></div>
-    <form class="padding"
-          hx-post="/web/api/settings/batch"
+<div class="section-header">Telegram</div>
+<div class="card">
+    <form hx-post="/web/api/settings/batch"
           hx-swap="none"
-          hx-on::after-request="if(event.detail.successful) showToast('Telegram settings saved!', 'success')">
-
-        <div class="field label border round">
-            <input type="text" name="telegram_chat_id" value="{{ settings.get('telegram_chat_id', '') }}">
-            <label>Chat ID</label>
-            <span class="helper">Your Telegram chat ID for receiving digests</span>
+          hx-on::after-request="if(event.detail.successful) showToast('Сохранено!', 'success')">
+        <div style="padding: 16px;">
+            <div class="field label border round" style="margin-bottom: 0;">
+                <input type="text" name="telegram_chat_id" value="{{ settings.get('telegram_chat_id', '') }}">
+                <label>Chat ID</label>
+            </div>
+            <p class="secondary-text" style="font-size: 12px; margin: 8px 0 0;">ID чата для получения дайджестов</p>
         </div>
-
-        <nav class="right-align">
-            <button type="submit" class="round">
+        <div class="divider"></div>
+        <div style="padding: 12px 16px; display: flex; justify-content: flex-end;">
+            <button type="submit" class="round small">
                 <i>save</i>
-                <span>Save</span>
+                <span>Сохранить</span>
             </button>
-        </nav>
+        </div>
     </form>
-</article>
+</div>
 
 <!-- Language Settings -->
-<article class="surface round medium-margin">
-    <div class="padding">
-        <h5><i>translate</i> Language</h5>
-        <p class="secondary-text">Choose your preferred language for digests</p>
-    </div>
-    <div class="divider"></div>
-    <form class="padding"
-          hx-post="/web/api/settings/batch"
+<div class="section-header">Язык</div>
+<div class="card">
+    <form hx-post="/web/api/settings/batch"
           hx-swap="none"
-          hx-on::after-request="if(event.detail.successful) showToast('Language settings saved!', 'success')">
-
-        <div class="field suffix border round">
-            <select name="digest_language">
-                <option value="ru" {% if settings.get('digest_language', 'ru') == 'ru' %}selected{% endif %}>Russian</option>
-                <option value="en" {% if settings.get('digest_language') == 'en' %}selected{% endif %}>English</option>
-            </select>
-            <i>arrow_drop_down</i>
-        </div>
-
-        <nav class="right-align">
-            <button type="submit" class="round">
-                <i>save</i>
-                <span>Save</span>
-            </button>
-        </nav>
-    </form>
-</article>
-
-<!-- Advanced Settings -->
-<article class="surface round medium-margin">
-    <div class="padding">
-        <h5><i>tune</i> Advanced</h5>
-        <p class="secondary-text">Advanced configuration options</p>
-    </div>
-    <div class="divider"></div>
-    <div class="padding">
-        <div id="settings-list">
-            {% for setting in all_settings %}
-            <div id="setting-{{ setting.key | replace('.', '-') }}" class="row small-padding border-bottom">
-                <div class="max">
-                    <p class="bold">{{ setting.key }}</p>
-                    <p class="secondary-text small-text">{{ setting.value | truncate(50) }}</p>
-                </div>
-                <button class="circle transparent small"
-                        onclick="editSetting('{{ setting.key }}', '{{ setting.value | e }}')">
-                    <i>edit</i>
-                </button>
-                <button class="circle transparent small"
-                        hx-delete="/web/api/settings/{{ setting.key }}"
-                        hx-target="#setting-{{ setting.key | replace('.', '-') }}"
-                        hx-swap="outerHTML"
-                        hx-confirm="Delete setting '{{ setting.key }}'?">
-                    <i>delete</i>
-                </button>
+          hx-on::after-request="if(event.detail.successful) showToast('Сохранено!', 'success')">
+        <div style="padding: 16px;">
+            <div class="field suffix border round" style="margin-bottom: 0;">
+                <select name="digest_language">
+                    <option value="ru" {% if settings.get('digest_language', 'ru') == 'ru' %}selected{% endif %}>Русский</option>
+                    <option value="en" {% if settings.get('digest_language') == 'en' %}selected{% endif %}>English</option>
+                </select>
+                <i>arrow_drop_down</i>
             </div>
-            {% else %}
-            <p class="secondary-text center-align padding">No custom settings configured</p>
-            {% endfor %}
+            <p class="secondary-text" style="font-size: 12px; margin: 8px 0 0;">Язык дайджестов</p>
         </div>
-
-        <div class="medium-margin">
-            <button class="border round" onclick="document.getElementById('new-setting-dialog').showModal()">
-                <i>add</i>
-                <span>Add Setting</span>
+        <div class="divider"></div>
+        <div style="padding: 12px 16px; display: flex; justify-content: flex-end;">
+            <button type="submit" class="round small">
+                <i>save</i>
+                <span>Сохранить</span>
             </button>
         </div>
-    </div>
-</article>
+    </form>
+</div>
 
 <!-- System Info -->
-<article class="surface-variant round medium-margin">
-    <div class="padding">
-        <h5><i>info</i> System Information</h5>
-    </div>
-    <div class="divider"></div>
-    <div class="padding">
-        <div class="grid">
-            <div class="s12 m6">
-                <p class="secondary-text small-text">Version</p>
-                <p>{{ version or '0.1.0' }}</p>
-            </div>
-            <div class="s12 m6">
-                <p class="secondary-text small-text">API Status</p>
-                <div hx-get="/api/health" hx-trigger="load" hx-swap="innerHTML">
-                    <progress class="circle small"></progress>
-                </div>
-            </div>
+<div class="section-header">О приложении</div>
+<div class="card">
+    <div class="list-tile">
+        <div class="leading">
+            <i>info</i>
+        </div>
+        <div class="content">
+            <p class="title">Версия</p>
+            <p class="subtitle">{{ version or '0.1.0' }}</p>
         </div>
     </div>
-</article>
-
-<!-- New Setting Dialog -->
-<dialog id="new-setting-dialog" class="round">
-    <header class="row">
-        <h5 class="max">Add Setting</h5>
-        <button class="circle transparent" onclick="this.closest('dialog').close()">
-            <i>close</i>
-        </button>
-    </header>
-    <form hx-post="/web/api/settings"
-          hx-target="#settings-list"
-          hx-swap="beforeend"
-          hx-on::after-request="if(event.detail.successful) { this.reset(); this.closest('dialog').close(); showToast('Setting added!', 'success'); }">
-
-        <div class="field label border round">
-            <input type="text" name="key" required pattern="[a-zA-Z0-9_.]+" minlength="1">
-            <label>Key</label>
-            <span class="helper">e.g., feature.enabled</span>
+    <div class="divider" style="margin-left: 72px;"></div>
+    <div class="list-tile">
+        <div class="leading">
+            <i>dns</i>
         </div>
-
-        <div class="field label border round">
-            <textarea name="value" required rows="3"></textarea>
-            <label>Value</label>
+        <div class="content">
+            <p class="title">API</p>
+            <p class="subtitle" id="api-status">Проверка...</p>
         </div>
-
-        <nav class="right-align">
-            <button type="button" class="border round" onclick="this.closest('dialog').close()">Cancel</button>
-            <button type="submit" class="round">
-                <i>check</i>
-                <span>Add</span>
-            </button>
-        </nav>
-    </form>
-</dialog>
-
-<!-- Edit Setting Dialog -->
-<dialog id="edit-setting-dialog" class="round">
-    <header class="row">
-        <h5 class="max">Edit Setting</h5>
-        <button class="circle transparent" onclick="this.closest('dialog').close()">
-            <i>close</i>
-        </button>
-    </header>
-    <form id="edit-setting-form"
-          hx-swap="none"
-          hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); showToast('Setting updated!', 'success'); location.reload(); }">
-
-        <div class="field label border round">
-            <input type="text" name="key" id="edit-setting-key" readonly>
-            <label>Key</label>
-        </div>
-
-        <div class="field label border round">
-            <textarea name="value" id="edit-setting-value" required rows="3"></textarea>
-            <label>Value</label>
-        </div>
-
-        <nav class="right-align">
-            <button type="button" class="border round" onclick="this.closest('dialog').close()">Cancel</button>
-            <button type="submit" class="round">
-                <i>check</i>
-                <span>Save</span>
-            </button>
-        </nav>
-    </form>
-</dialog>
+        <span class="status-dot" id="api-status-dot"></span>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-function editSetting(key, value) {
-    document.getElementById('edit-setting-key').value = key;
-    document.getElementById('edit-setting-value').value = value;
-    document.getElementById('edit-setting-form').setAttribute('hx-put', `/web/api/settings/${key}`);
-    htmx.process(document.getElementById('edit-setting-form'));
-    document.getElementById('edit-setting-dialog').showModal();
-}
+fetch('/health')
+    .then(r => r.json())
+    .then(data => {
+        document.getElementById('api-status').textContent = data.status || 'OK';
+        document.getElementById('api-status-dot').classList.add('ok');
+    })
+    .catch(() => {
+        document.getElementById('api-status').textContent = 'Недоступен';
+        document.getElementById('api-status-dot').classList.add('error');
+    });
 </script>
 {% endblock %}

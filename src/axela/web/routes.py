@@ -61,9 +61,16 @@ async def dashboard(
         "digests_sent": 0,  # Placeholder for future implementation
     }
 
-    recent_projects = projects[:5]
-    for project in recent_projects:
-        project.sources_count = len([s for s in sources if s.project_id == project.id])  # type: ignore[attr-defined]
+    # Create project dicts with sources_count (Project is frozen dataclass)
+    recent_projects = []
+    for project in projects[:5]:
+        project_dict = {
+            "id": project.id,
+            "name": project.name,
+            "color": project.color,
+            "sources_count": len([s for s in sources if s.project_id == project.id]),
+        }
+        recent_projects.append(project_dict)
 
     return templates.TemplateResponse(
         request=request,
@@ -209,24 +216,17 @@ async def get_status(
 
 @api_router.post("/projects", response_class=HTMLResponse)
 async def create_project(
-    request: Request,
     project_repo: Annotated[ProjectRepository, Depends(get_project_repository)],
     name: Annotated[str, Form()],
     color: Annotated[str | None, Form()] = None,
 ) -> HTMLResponse:
     """Create a new project via HTMX."""
-    created = await project_repo.create(name=name, color=color if color else None)
-
-    return templates.TemplateResponse(
-        request=request,
-        name="components/project_card.html",
-        context={"project": created},
-    )
+    await project_repo.create(name=name, color=color if color else None)
+    return HTMLResponse(content="")
 
 
 @api_router.put("/projects/{project_id}", response_class=HTMLResponse)
 async def update_project(
-    request: Request,
     project_id: UUID,
     project_repo: Annotated[ProjectRepository, Depends(get_project_repository)],
     name: Annotated[str, Form()],
@@ -240,11 +240,7 @@ async def update_project(
     )
 
     if updated:
-        return templates.TemplateResponse(
-            request=request,
-            name="components/project_card.html",
-            context={"project": updated},
-        )
+        return HTMLResponse(content="")
 
     return HTMLResponse(content="", status_code=404)
 
@@ -293,7 +289,6 @@ def _parse_config(form_data: dict[str, Any]) -> dict[str, Any]:
 async def create_source(
     request: Request,
     source_repo: Annotated[SourceRepository, Depends(get_source_repository)],
-    project_repo: Annotated[ProjectRepository, Depends(get_project_repository)],
 ) -> HTMLResponse:
     """Create a new source via HTMX."""
     form_data = await request.form()
@@ -309,7 +304,7 @@ async def create_source(
     # Convert string to SourceType enum
     source_type = SourceType(source_type_str)
 
-    created = await source_repo.create(
+    await source_repo.create(
         project_id=project_id,
         source_type=source_type,
         name=name,
@@ -317,23 +312,13 @@ async def create_source(
         config=config if config else None,
     )
 
-    # Add project name for display
-    project = await project_repo.get_by_id(project_id)
-    created.project_name = project.name if project else "Unknown"  # type: ignore[attr-defined]
-
-    return templates.TemplateResponse(
-        request=request,
-        name="components/source_card.html",
-        context={"source": created},
-    )
+    return HTMLResponse(content="")
 
 
 @api_router.put("/sources/{source_id}", response_class=HTMLResponse)
 async def update_source(
-    request: Request,
     source_id: UUID,
     source_repo: Annotated[SourceRepository, Depends(get_source_repository)],
-    project_repo: Annotated[ProjectRepository, Depends(get_project_repository)],
     name: Annotated[str, Form()],
     is_active: Annotated[bool, Form()] = False,
 ) -> HTMLResponse:
@@ -345,15 +330,7 @@ async def update_source(
     )
 
     if updated:
-        # Add project name for display
-        project = await project_repo.get_by_id(updated.project_id)
-        updated.project_name = project.name if project else "Unknown"  # type: ignore[attr-defined]
-
-        return templates.TemplateResponse(
-            request=request,
-            name="components/source_card.html",
-            context={"source": updated},
-        )
+        return HTMLResponse(content="")
 
     return HTMLResponse(content="", status_code=404)
 
@@ -408,7 +385,7 @@ async def create_schedule(
     project_ids = form_data.getlist("project_ids")
     project_ids_list = [UUID(str(pid)) for pid in project_ids] if project_ids else None
 
-    created = await schedule_repo.create(
+    await schedule_repo.create(
         name=str(form_dict["name"]),
         digest_type=str(form_dict["digest_type"]),
         cron_expression=str(form_dict["cron_expression"]),
@@ -416,16 +393,11 @@ async def create_schedule(
         project_ids=project_ids_list,
     )
 
-    return templates.TemplateResponse(
-        request=request,
-        name="components/schedule_card.html",
-        context={"schedule": created},
-    )
+    return HTMLResponse(content="")
 
 
 @api_router.put("/schedules/{schedule_id}", response_class=HTMLResponse)
 async def update_schedule(
-    request: Request,
     schedule_id: UUID,
     schedule_repo: Annotated[ScheduleRepository, Depends(get_schedule_repository)],
     name: Annotated[str, Form()],
@@ -444,11 +416,7 @@ async def update_schedule(
     )
 
     if updated:
-        return templates.TemplateResponse(
-            request=request,
-            name="components/schedule_card.html",
-            context={"schedule": updated},
-        )
+        return HTMLResponse(content="")
 
     return HTMLResponse(content="", status_code=404)
 

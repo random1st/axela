@@ -1,223 +1,575 @@
 {% extends "base.html" %}
 
-{% block title %}Schedules - Axela{% endblock %}
+{% block header_title %}Расписание{% endblock %}
 
 {% block content %}
-<header class="row small-margin">
-    <div class="max">
-        <h4>Schedules</h4>
-        <p class="secondary-text">Configure when to send digests</p>
-    </div>
-    <button class="circle large" onclick="document.getElementById('new-schedule-dialog').showModal()">
-        <i>add</i>
-    </button>
-</header>
-
-<!-- Schedules List -->
-<div id="schedules-list" class="card-grid">
+{% if not schedules %}
+<div class="empty-state">
+    <i>schedule</i>
+    <h5 style="margin-top: 16px;">Нет расписаний</h5>
+    <p class="secondary-text">Создайте расписание для автоматической отправки дайджестов</p>
+</div>
+{% else %}
+<div class="card">
     {% for schedule in schedules %}
-    {% include "components/schedule_card.html" %}
-    {% else %}
-    <article class="surface round padding">
-        <div class="center-align">
-            <i class="extra large secondary-text">schedule</i>
-            <h6>No schedules yet</h6>
-            <p class="secondary-text">Create a schedule to automatically receive digests.</p>
-            <button class="round" onclick="document.getElementById('new-schedule-dialog').showModal()">
-                <i>add</i>
-                <span>Create Schedule</span>
-            </button>
+    <div class="list-tile" id="schedule-{{ schedule.id }}">
+        <div class="leading" style="background: {% if schedule.is_active %}var(--primary){% else %}var(--outline){% endif %};">
+            <i style="color: white;">{% if schedule.digest_type == 'morning' %}wb_sunny{% else %}nights_stay{% endif %}</i>
         </div>
-    </article>
+        <div class="content">
+            <p class="title">{{ schedule.name }}</p>
+            <p class="subtitle">{{ schedule.cron_expression }} · {{ schedule.timezone or 'UTC' }}</p>
+        </div>
+        <button class="circle transparent small" onclick="showScheduleMenu('{{ schedule.id }}', '{{ schedule.name }}', '{{ schedule.digest_type }}', '{{ schedule.cron_expression }}', '{{ schedule.timezone or 'UTC' }}', {{ schedule.is_active | lower }})">
+            <i>more_vert</i>
+        </button>
+    </div>
+    {% if not loop.last %}<div class="divider" style="margin-left: 72px;"></div>{% endif %}
     {% endfor %}
 </div>
+{% endif %}
+
+<!-- Cron Help Card -->
+<div class="section-header">Справка по Cron</div>
+<div class="card">
+    <div class="list-tile">
+        <div class="content">
+            <p class="title"><code>0 9 * * 1-5</code></p>
+            <p class="subtitle">9:00 по будням</p>
+        </div>
+    </div>
+    <div class="divider" style="margin-left: 16px;"></div>
+    <div class="list-tile">
+        <div class="content">
+            <p class="title"><code>0 18 * * *</code></p>
+            <p class="subtitle">18:00 каждый день</p>
+        </div>
+    </div>
+    <div class="divider" style="margin-left: 16px;"></div>
+    <div class="list-tile">
+        <div class="content">
+            <p class="title"><code>0 8,18 * * *</code></p>
+            <p class="subtitle">8:00 и 18:00</p>
+        </div>
+    </div>
+</div>
+
+<!-- FAB -->
+<button class="fab primary" onclick="document.getElementById('new-schedule-dialog').showModal()">
+    <i>add</i>
+</button>
 
 <!-- New Schedule Dialog -->
-<dialog id="new-schedule-dialog" class="round large">
-    <header class="row">
-        <h5 class="max">New Schedule</h5>
-        <button class="circle transparent" onclick="this.closest('dialog').close()">
-            <i>close</i>
-        </button>
-    </header>
+<dialog id="new-schedule-dialog" class="round" style="max-width: 360px; width: calc(100% - 32px);">
+    <h5>Новое расписание</h5>
     <form hx-post="/web/api/schedules"
-          hx-target="#schedules-list"
-          hx-swap="afterbegin"
-          hx-on::after-request="if(event.detail.successful) { this.reset(); this.closest('dialog').close(); showToast('Schedule created!', 'success'); }">
+          hx-swap="none"
+          hx-on::after-request="if(event.detail.successful) { this.reset(); this.closest('dialog').close(); location.reload(); }">
 
         <div class="field label border round">
             <input type="text" name="name" required minlength="1" maxlength="100">
-            <label>Schedule Name</label>
+            <label>Название</label>
         </div>
 
-        <div class="grid">
-            <div class="s12 m6">
-                <div class="field label suffix border round">
-                    <select name="digest_type" required>
-                        <option value="morning">Morning Digest</option>
-                        <option value="evening">Evening Digest</option>
-                    </select>
-                    <label>Digest Type</label>
-                    <i>arrow_drop_down</i>
-                </div>
+        <div class="field label suffix border round">
+            <select name="digest_type" required>
+                <option value="morning">Утренний дайджест</option>
+                <option value="evening">Вечерний дайджест</option>
+            </select>
+            <label>Тип</label>
+            <i>arrow_drop_down</i>
+        </div>
+
+        <!-- Cron Constructor -->
+        <div class="cron-constructor" id="cron-new">
+            <!-- Mode Toggle -->
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <button type="button" class="small round cron-mode-btn active" onclick="setCronMode('cron-new', 'simple')">
+                    <i>schedule</i>
+                    <span>Простой</span>
+                </button>
+                <button type="button" class="small round border cron-mode-btn" onclick="setCronMode('cron-new', 'advanced')">
+                    <i>code</i>
+                    <span>Cron</span>
+                </button>
             </div>
-            <div class="s12 m6">
+
+            <!-- Simple Mode -->
+            <div class="cron-simple">
                 <div class="field label border round">
-                    <input type="text" name="cron_expression" required placeholder="0 9 * * 1-5" pattern="[0-9*,\-/\s]+">
-                    <label>Cron Expression</label>
-                    <span class="helper">e.g., 0 9 * * 1-5 (9 AM weekdays)</span>
+                    <input type="time" class="cron-time" value="09:00" onchange="updateCronFromSimple('cron-new')">
+                    <label>Время</label>
+                </div>
+
+                <p class="secondary-text" style="margin: 12px 0 8px; font-size: 13px;">Дни недели</p>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <label class="chip small cron-day">
+                        <input type="checkbox" value="1" checked onchange="updateCronFromSimple('cron-new')">
+                        <span>Пн</span>
+                    </label>
+                    <label class="chip small cron-day">
+                        <input type="checkbox" value="2" checked onchange="updateCronFromSimple('cron-new')">
+                        <span>Вт</span>
+                    </label>
+                    <label class="chip small cron-day">
+                        <input type="checkbox" value="3" checked onchange="updateCronFromSimple('cron-new')">
+                        <span>Ср</span>
+                    </label>
+                    <label class="chip small cron-day">
+                        <input type="checkbox" value="4" checked onchange="updateCronFromSimple('cron-new')">
+                        <span>Чт</span>
+                    </label>
+                    <label class="chip small cron-day">
+                        <input type="checkbox" value="5" checked onchange="updateCronFromSimple('cron-new')">
+                        <span>Пт</span>
+                    </label>
+                    <label class="chip small cron-day">
+                        <input type="checkbox" value="6" onchange="updateCronFromSimple('cron-new')">
+                        <span>Сб</span>
+                    </label>
+                    <label class="chip small cron-day">
+                        <input type="checkbox" value="0" onchange="updateCronFromSimple('cron-new')">
+                        <span>Вс</span>
+                    </label>
+                </div>
+
+                <div class="surface-container-high round" style="margin-top: 12px; padding: 10px 12px;">
+                    <span class="secondary-text" style="font-size: 12px;">Cron: </span>
+                    <code class="cron-preview">0 9 * * 1-5</code>
                 </div>
             </div>
+
+            <!-- Advanced Mode (Hidden) -->
+            <div class="cron-advanced" style="display: none;">
+                <div class="field label border round">
+                    <input type="text" class="cron-input" placeholder="0 9 * * 1-5" onchange="syncCronValue('cron-new')">
+                    <label>Cron выражение</label>
+                </div>
+            </div>
+
+            <!-- Hidden field for form submission -->
+            <input type="hidden" name="cron_expression" class="cron-value" value="0 9 * * 1-5">
         </div>
 
-        <div class="field label border round">
-            <input type="text" name="timezone" value="UTC" placeholder="Europe/Moscow">
-            <label>Timezone</label>
+        <div class="field label suffix border round">
+            <select name="timezone" required>
+                <optgroup label="СНГ">
+                    <option value="Europe/Moscow" selected>Москва (UTC+3)</option>
+                    <option value="Europe/Kiev">Киев (UTC+2)</option>
+                    <option value="Europe/Minsk">Минск (UTC+3)</option>
+                    <option value="Asia/Almaty">Алматы (UTC+6)</option>
+                    <option value="Asia/Yekaterinburg">Екатеринбург (UTC+5)</option>
+                    <option value="Asia/Novosibirsk">Новосибирск (UTC+7)</option>
+                    <option value="Asia/Vladivostok">Владивосток (UTC+10)</option>
+                </optgroup>
+                <optgroup label="Европа">
+                    <option value="Europe/London">Лондон (UTC+0)</option>
+                    <option value="Europe/Paris">Париж (UTC+1)</option>
+                    <option value="Europe/Berlin">Берлин (UTC+1)</option>
+                    <option value="Europe/Istanbul">Стамбул (UTC+3)</option>
+                </optgroup>
+                <optgroup label="Америка">
+                    <option value="America/New_York">Нью-Йорк (UTC-5)</option>
+                    <option value="America/Los_Angeles">Лос-Анджелес (UTC-8)</option>
+                    <option value="America/Chicago">Чикаго (UTC-6)</option>
+                </optgroup>
+                <optgroup label="Азия">
+                    <option value="Asia/Tokyo">Токио (UTC+9)</option>
+                    <option value="Asia/Shanghai">Шанхай (UTC+8)</option>
+                    <option value="Asia/Singapore">Сингапур (UTC+8)</option>
+                    <option value="Asia/Dubai">Дубай (UTC+4)</option>
+                </optgroup>
+                <optgroup label="Другие">
+                    <option value="UTC">UTC (UTC+0)</option>
+                    <option value="Australia/Sydney">Сидней (UTC+10)</option>
+                </optgroup>
+            </select>
+            <label>Часовой пояс</label>
+            <i>arrow_drop_down</i>
         </div>
 
         {% if projects %}
-        <div class="medium-margin">
-            <p class="bold">Filter by Projects (optional)</p>
-            <p class="secondary-text small-text">Leave empty to include all projects</p>
-            <div class="grid">
-                {% for project in projects %}
-                <div class="s12 m6 l4">
-                    <label class="checkbox">
-                        <input type="checkbox" name="project_ids" value="{{ project.id }}">
-                        <span>{{ project.name }}</span>
-                    </label>
-                </div>
-                {% endfor %}
-            </div>
+        <p class="secondary-text" style="margin: 16px 0 8px;">Проекты (опционально)</p>
+        <div style="max-height: 150px; overflow-y: auto;">
+            {% for project in projects %}
+            <label class="checkbox" style="display: block; padding: 8px 0;">
+                <input type="checkbox" name="project_ids" value="{{ project.id }}">
+                <span>{{ project.name }}</span>
+            </label>
+            {% endfor %}
         </div>
         {% endif %}
 
-        <nav class="right-align">
-            <button type="button" class="border round" onclick="this.closest('dialog').close()">Cancel</button>
-            <button type="submit" class="round">
-                <i>check</i>
-                <span>Create</span>
-            </button>
+        <nav class="right-align" style="margin-top: 16px;">
+            <button type="button" class="border round" onclick="this.closest('dialog').close()">Отмена</button>
+            <button type="submit" class="round">Создать</button>
         </nav>
     </form>
 </dialog>
 
+<!-- Schedule Actions Dialog -->
+<dialog id="schedule-actions-dialog" class="round" style="max-width: 360px; width: calc(100% - 32px);">
+    <h6 id="schedule-actions-title" style="margin-bottom: 16px;"></h6>
+    <div class="list-tile" onclick="editCurrentSchedule()">
+        <i>edit</i>
+        <div class="content"><p class="title">Редактировать</p></div>
+    </div>
+    <div class="list-tile" onclick="deleteCurrentSchedule()" style="color: var(--error);">
+        <i>delete</i>
+        <div class="content"><p class="title">Удалить</p></div>
+    </div>
+    <nav class="right-align" style="margin-top: 16px;">
+        <button class="border round" onclick="this.closest('dialog').close()">Закрыть</button>
+    </nav>
+</dialog>
+
 <!-- Edit Schedule Dialog -->
-<dialog id="edit-schedule-dialog" class="round large">
-    <header class="row">
-        <h5 class="max">Edit Schedule</h5>
-        <button class="circle transparent" onclick="this.closest('dialog').close()">
-            <i>close</i>
-        </button>
-    </header>
+<dialog id="edit-schedule-dialog" class="round" style="max-width: 360px; width: calc(100% - 32px);">
+    <h5>Редактировать</h5>
     <form id="edit-schedule-form"
-          hx-swap="outerHTML"
-          hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); showToast('Schedule updated!', 'success'); }">
-        <input type="hidden" name="id" id="edit-schedule-id">
+          hx-swap="none"
+          hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); location.reload(); }">
 
         <div class="field label border round">
-            <input type="text" name="name" id="edit-schedule-name" required minlength="1" maxlength="100">
-            <label>Schedule Name</label>
+            <input type="text" name="name" id="edit-schedule-name" required>
+            <label>Название</label>
         </div>
 
-        <div class="grid">
-            <div class="s12 m6">
-                <div class="field label suffix border round">
-                    <select name="digest_type" id="edit-schedule-digest-type" required>
-                        <option value="morning">Morning Digest</option>
-                        <option value="evening">Evening Digest</option>
-                    </select>
-                    <label>Digest Type</label>
-                    <i>arrow_drop_down</i>
-                </div>
+        <div class="field label suffix border round">
+            <select name="digest_type" id="edit-schedule-digest-type" required>
+                <option value="morning">Утренний дайджест</option>
+                <option value="evening">Вечерний дайджест</option>
+            </select>
+            <label>Тип</label>
+            <i>arrow_drop_down</i>
+        </div>
+
+        <!-- Cron Constructor (Edit) -->
+        <div class="cron-constructor" id="cron-edit">
+            <!-- Mode Toggle -->
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <button type="button" class="small round cron-mode-btn active" onclick="setCronMode('cron-edit', 'simple')">
+                    <i>schedule</i>
+                    <span>Простой</span>
+                </button>
+                <button type="button" class="small round border cron-mode-btn" onclick="setCronMode('cron-edit', 'advanced')">
+                    <i>code</i>
+                    <span>Cron</span>
+                </button>
             </div>
-            <div class="s12 m6">
+
+            <!-- Simple Mode -->
+            <div class="cron-simple">
                 <div class="field label border round">
-                    <input type="text" name="cron_expression" id="edit-schedule-cron" required>
-                    <label>Cron Expression</label>
+                    <input type="time" class="cron-time" value="09:00" onchange="updateCronFromSimple('cron-edit')">
+                    <label>Время</label>
+                </div>
+
+                <p class="secondary-text" style="margin: 12px 0 8px; font-size: 13px;">Дни недели</p>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <label class="chip small cron-day">
+                        <input type="checkbox" value="1" checked onchange="updateCronFromSimple('cron-edit')">
+                        <span>Пн</span>
+                    </label>
+                    <label class="chip small cron-day">
+                        <input type="checkbox" value="2" checked onchange="updateCronFromSimple('cron-edit')">
+                        <span>Вт</span>
+                    </label>
+                    <label class="chip small cron-day">
+                        <input type="checkbox" value="3" checked onchange="updateCronFromSimple('cron-edit')">
+                        <span>Ср</span>
+                    </label>
+                    <label class="chip small cron-day">
+                        <input type="checkbox" value="4" checked onchange="updateCronFromSimple('cron-edit')">
+                        <span>Чт</span>
+                    </label>
+                    <label class="chip small cron-day">
+                        <input type="checkbox" value="5" checked onchange="updateCronFromSimple('cron-edit')">
+                        <span>Пт</span>
+                    </label>
+                    <label class="chip small cron-day">
+                        <input type="checkbox" value="6" onchange="updateCronFromSimple('cron-edit')">
+                        <span>Сб</span>
+                    </label>
+                    <label class="chip small cron-day">
+                        <input type="checkbox" value="0" onchange="updateCronFromSimple('cron-edit')">
+                        <span>Вс</span>
+                    </label>
+                </div>
+
+                <div class="surface-container-high round" style="margin-top: 12px; padding: 10px 12px;">
+                    <span class="secondary-text" style="font-size: 12px;">Cron: </span>
+                    <code class="cron-preview">0 9 * * 1-5</code>
                 </div>
             </div>
+
+            <!-- Advanced Mode (Hidden) -->
+            <div class="cron-advanced" style="display: none;">
+                <div class="field label border round">
+                    <input type="text" class="cron-input" placeholder="0 9 * * 1-5" onchange="syncCronValue('cron-edit')">
+                    <label>Cron выражение</label>
+                </div>
+            </div>
+
+            <!-- Hidden field for form submission -->
+            <input type="hidden" name="cron_expression" class="cron-value" value="0 9 * * 1-5">
         </div>
 
-        <div class="field label border round">
-            <input type="text" name="timezone" id="edit-schedule-timezone">
-            <label>Timezone</label>
+        <div class="field label suffix border round">
+            <select name="timezone" id="edit-schedule-timezone" required>
+                <optgroup label="СНГ">
+                    <option value="Europe/Moscow">Москва (UTC+3)</option>
+                    <option value="Europe/Kiev">Киев (UTC+2)</option>
+                    <option value="Europe/Minsk">Минск (UTC+3)</option>
+                    <option value="Asia/Almaty">Алматы (UTC+6)</option>
+                    <option value="Asia/Yekaterinburg">Екатеринбург (UTC+5)</option>
+                    <option value="Asia/Novosibirsk">Новосибирск (UTC+7)</option>
+                    <option value="Asia/Vladivostok">Владивосток (UTC+10)</option>
+                </optgroup>
+                <optgroup label="Европа">
+                    <option value="Europe/London">Лондон (UTC+0)</option>
+                    <option value="Europe/Paris">Париж (UTC+1)</option>
+                    <option value="Europe/Berlin">Берлин (UTC+1)</option>
+                    <option value="Europe/Istanbul">Стамбул (UTC+3)</option>
+                </optgroup>
+                <optgroup label="Америка">
+                    <option value="America/New_York">Нью-Йорк (UTC-5)</option>
+                    <option value="America/Los_Angeles">Лос-Анджелес (UTC-8)</option>
+                    <option value="America/Chicago">Чикаго (UTC-6)</option>
+                </optgroup>
+                <optgroup label="Азия">
+                    <option value="Asia/Tokyo">Токио (UTC+9)</option>
+                    <option value="Asia/Shanghai">Шанхай (UTC+8)</option>
+                    <option value="Asia/Singapore">Сингапур (UTC+8)</option>
+                    <option value="Asia/Dubai">Дубай (UTC+4)</option>
+                </optgroup>
+                <optgroup label="Другие">
+                    <option value="UTC">UTC (UTC+0)</option>
+                    <option value="Australia/Sydney">Сидней (UTC+10)</option>
+                </optgroup>
+            </select>
+            <label>Часовой пояс</label>
+            <i>arrow_drop_down</i>
         </div>
 
-        <div class="field">
-            <label class="switch">
-                <input type="checkbox" name="is_active" id="edit-schedule-active">
-                <span>Active</span>
-            </label>
-        </div>
+        <label class="switch" style="margin: 16px 0;">
+            <input type="checkbox" name="is_active" id="edit-schedule-active">
+            <span>Активно</span>
+        </label>
 
-        <nav class="right-align">
-            <button type="button" class="border round" onclick="this.closest('dialog').close()">Cancel</button>
-            <button type="submit" class="round">
-                <i>check</i>
-                <span>Save</span>
-            </button>
+        <nav class="right-align" style="margin-top: 16px;">
+            <button type="button" class="border round" onclick="this.closest('dialog').close()">Отмена</button>
+            <button type="submit" class="round">Сохранить</button>
         </nav>
     </form>
 </dialog>
 
 <!-- Delete Confirmation Dialog -->
-<dialog id="delete-schedule-dialog" class="round">
-    <header>
-        <h5>Delete Schedule?</h5>
-    </header>
-    <p>This will permanently delete the schedule. You will no longer receive automatic digests from this schedule.</p>
-    <nav class="right-align">
-        <button class="border round" onclick="this.closest('dialog').close()">Cancel</button>
+<dialog id="delete-schedule-dialog" class="round" style="max-width: 320px; width: calc(100% - 32px);">
+    <h5>Удалить расписание?</h5>
+    <p class="secondary-text">Вы перестанете получать дайджесты по этому расписанию.</p>
+    <nav class="right-align" style="margin-top: 16px;">
+        <button class="border round" onclick="this.closest('dialog').close()">Отмена</button>
         <button id="confirm-delete-schedule-btn" class="round error"
-                hx-swap="outerHTML swap:1s"
-                hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); showToast('Schedule deleted', 'success'); }">
-            <i>delete</i>
-            <span>Delete</span>
+                hx-swap="none"
+                hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); location.reload(); }">
+            Удалить
         </button>
     </nav>
 </dialog>
-
-<!-- Cron Help -->
-<article class="surface-variant round padding medium-margin">
-    <h6><i>help</i> Cron Expression Examples</h6>
-    <div class="grid">
-        <div class="s12 m6 l4">
-            <code>0 9 * * 1-5</code>
-            <p class="secondary-text small-text">9:00 AM, Monday-Friday</p>
-        </div>
-        <div class="s12 m6 l4">
-            <code>0 18 * * *</code>
-            <p class="secondary-text small-text">6:00 PM, every day</p>
-        </div>
-        <div class="s12 m6 l4">
-            <code>0 8,18 * * *</code>
-            <p class="secondary-text small-text">8:00 AM and 6:00 PM</p>
-        </div>
-    </div>
-</article>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-function editSchedule(id, name, digestType, cron, timezone, isActive) {
-    document.getElementById('edit-schedule-id').value = id;
-    document.getElementById('edit-schedule-name').value = name;
-    document.getElementById('edit-schedule-digest-type').value = digestType;
-    document.getElementById('edit-schedule-cron').value = cron;
-    document.getElementById('edit-schedule-timezone').value = timezone || 'UTC';
-    document.getElementById('edit-schedule-active').checked = isActive;
-    document.getElementById('edit-schedule-form').setAttribute('hx-put', `/web/api/schedules/${id}`);
-    document.getElementById('edit-schedule-form').setAttribute('hx-target', `#schedule-${id}`);
+let currentSchedule = {};
+
+function showScheduleMenu(id, name, digestType, cron, timezone, isActive) {
+    currentSchedule = { id, name, digestType, cron, timezone, isActive };
+    document.getElementById('schedule-actions-title').textContent = name;
+    document.getElementById('schedule-actions-dialog').showModal();
+}
+
+function editCurrentSchedule() {
+    document.getElementById('schedule-actions-dialog').close();
+    document.getElementById('edit-schedule-name').value = currentSchedule.name;
+    document.getElementById('edit-schedule-digest-type').value = currentSchedule.digestType;
+    document.getElementById('edit-schedule-timezone').value = currentSchedule.timezone;
+    document.getElementById('edit-schedule-active').checked = currentSchedule.isActive;
+
+    // Load cron into constructor
+    loadCronToConstructor('cron-edit', currentSchedule.cron);
+
+    document.getElementById('edit-schedule-form').setAttribute('hx-put', `/web/api/schedules/${currentSchedule.id}`);
     htmx.process(document.getElementById('edit-schedule-form'));
     document.getElementById('edit-schedule-dialog').showModal();
 }
 
-function confirmDeleteSchedule(id) {
-    document.getElementById('confirm-delete-schedule-btn').setAttribute('hx-delete', `/web/api/schedules/${id}`);
-    document.getElementById('confirm-delete-schedule-btn').setAttribute('hx-target', `#schedule-${id}`);
+function deleteCurrentSchedule() {
+    document.getElementById('schedule-actions-dialog').close();
+    document.getElementById('confirm-delete-schedule-btn').setAttribute('hx-delete', `/web/api/schedules/${currentSchedule.id}`);
     htmx.process(document.getElementById('confirm-delete-schedule-btn'));
     document.getElementById('delete-schedule-dialog').showModal();
+}
+
+// ============================================================================
+// Cron Constructor Functions
+// ============================================================================
+
+function setCronMode(constructorId, mode) {
+    const constructor = document.getElementById(constructorId);
+    const buttons = constructor.querySelectorAll('.cron-mode-btn');
+    const simplePanel = constructor.querySelector('.cron-simple');
+    const advancedPanel = constructor.querySelector('.cron-advanced');
+
+    // Update button states
+    buttons.forEach((btn, i) => {
+        if ((mode === 'simple' && i === 0) || (mode === 'advanced' && i === 1)) {
+            btn.classList.add('active');
+            btn.classList.remove('border');
+        } else {
+            btn.classList.remove('active');
+            btn.classList.add('border');
+        }
+    });
+
+    // Toggle panels
+    if (mode === 'simple') {
+        simplePanel.style.display = 'block';
+        advancedPanel.style.display = 'none';
+    } else {
+        simplePanel.style.display = 'none';
+        advancedPanel.style.display = 'block';
+        // Copy current value to advanced input
+        const cronValue = constructor.querySelector('.cron-value').value;
+        constructor.querySelector('.cron-input').value = cronValue;
+    }
+}
+
+function updateCronFromSimple(constructorId) {
+    const constructor = document.getElementById(constructorId);
+    const timeInput = constructor.querySelector('.cron-time');
+    const checkboxes = constructor.querySelectorAll('.cron-day input:checked');
+    const preview = constructor.querySelector('.cron-preview');
+    const hiddenInput = constructor.querySelector('.cron-value');
+
+    // Parse time
+    const [hours, minutes] = (timeInput.value || '09:00').split(':').map(Number);
+
+    // Get selected days
+    const days = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    const dayExpression = formatDayExpression(days);
+
+    // Build cron: minute hour * * day-of-week
+    const cron = `${minutes} ${hours} * * ${dayExpression}`;
+
+    // Update preview and hidden input
+    preview.textContent = cron;
+    hiddenInput.value = cron;
+}
+
+function syncCronValue(constructorId) {
+    const constructor = document.getElementById(constructorId);
+    const advancedInput = constructor.querySelector('.cron-input');
+    const hiddenInput = constructor.querySelector('.cron-value');
+    hiddenInput.value = advancedInput.value;
+}
+
+function formatDayExpression(days) {
+    if (days.length === 0) return '*';
+    if (days.length === 7) return '*';
+
+    const sorted = [...days].sort((a, b) => a - b);
+
+    // Check for weekdays pattern (1-5)
+    if (sorted.length === 5 && sorted.join(',') === '1,2,3,4,5') {
+        return '1-5';
+    }
+
+    // Check for weekend pattern (0,6)
+    if (sorted.length === 2 && sorted[0] === 0 && sorted[1] === 6) {
+        return '0,6';
+    }
+
+    // Group consecutive numbers into ranges
+    const ranges = [];
+    let start = sorted[0];
+    let end = sorted[0];
+
+    for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i] === end + 1) {
+            end = sorted[i];
+        } else {
+            ranges.push(start === end ? `${start}` : `${start}-${end}`);
+            start = sorted[i];
+            end = sorted[i];
+        }
+    }
+    ranges.push(start === end ? `${start}` : `${start}-${end}`);
+
+    return ranges.join(',');
+}
+
+function loadCronToConstructor(constructorId, cronExpression) {
+    const constructor = document.getElementById(constructorId);
+    const parts = cronExpression.trim().split(/\s+/);
+
+    // Set hidden value
+    constructor.querySelector('.cron-value').value = cronExpression;
+    constructor.querySelector('.cron-input').value = cronExpression;
+
+    // Try to parse into simple mode
+    if (parts.length === 5) {
+        const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+
+        // Only support simple patterns
+        if (dayOfMonth === '*' && month === '*' && /^\d+$/.test(minute) && /^\d+$/.test(hour)) {
+            // Set time
+            const timeInput = constructor.querySelector('.cron-time');
+            timeInput.value = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+
+            // Parse and set days
+            const checkboxes = constructor.querySelectorAll('.cron-day input');
+            checkboxes.forEach(cb => cb.checked = false);
+
+            if (dayOfWeek === '*') {
+                checkboxes.forEach(cb => cb.checked = true);
+            } else {
+                const dayValues = expandDayExpression(dayOfWeek);
+                dayValues.forEach(day => {
+                    const cb = constructor.querySelector(`.cron-day input[value="${day}"]`);
+                    if (cb) cb.checked = true;
+                });
+            }
+
+            // Update preview
+            constructor.querySelector('.cron-preview').textContent = cronExpression;
+
+            // Show simple mode
+            setCronMode(constructorId, 'simple');
+            return;
+        }
+    }
+
+    // Complex pattern - show advanced mode
+    setCronMode(constructorId, 'advanced');
+}
+
+function expandDayExpression(expr) {
+    const days = new Set();
+    const parts = expr.split(',');
+
+    for (const part of parts) {
+        if (part.includes('-')) {
+            const [start, end] = part.split('-').map(Number);
+            for (let i = start; i <= end; i++) {
+                days.add(i);
+            }
+        } else {
+            days.add(Number(part));
+        }
+    }
+
+    return Array.from(days);
 }
 </script>
 {% endblock %}
