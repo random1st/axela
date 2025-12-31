@@ -5,7 +5,6 @@ from typing import Any, ClassVar
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
-    ARRAY,
     Boolean,
     DateTime,
     ForeignKey,
@@ -15,9 +14,9 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from axela.infrastructure.database.types import GUID, JSONB, UUIDArray
 
 
 class Base(DeclarativeBase):
@@ -25,7 +24,7 @@ class Base(DeclarativeBase):
 
     type_annotation_map: ClassVar[dict[type, Any]] = {
         dict[str, Any]: JSONB,
-        list[UUID]: ARRAY(PG_UUID(as_uuid=True)),
+        list[UUID]: UUIDArray,
     }
 
 
@@ -34,7 +33,7 @@ class ProjectModel(Base):
 
     __tablename__ = "projects"
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(GUID, primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     color: Mapped[str | None] = mapped_column(String(7))  # hex color
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
@@ -52,9 +51,9 @@ class SourceModel(Base):
 
     __tablename__ = "sources"
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(GUID, primary_key=True, default=uuid4)
     project_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     source_type: Mapped[str] = mapped_column(String(50), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -85,9 +84,9 @@ class ItemModel(Base):
         Index("idx_items_content_hash", "content_hash"),
     )
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(GUID, primary_key=True, default=uuid4)
     source_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("sources.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("sources.id", ondelete="CASCADE"), nullable=False
     )
     external_id: Mapped[str] = mapped_column(String(255), nullable=False)
     item_type: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -115,7 +114,7 @@ class DigestModel(Base):
     __tablename__ = "digests"
     __table_args__ = (Index("idx_digests_sent_at", "sent_at"),)
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(GUID, primary_key=True, default=uuid4)
     digest_type: Mapped[str] = mapped_column(String(20), nullable=False)
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -140,12 +139,12 @@ class DigestItemModel(Base):
     __tablename__ = "digest_items"
     __table_args__ = (UniqueConstraint("digest_id", "item_id", name="uq_digest_items"),)
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(GUID, primary_key=True, default=uuid4)
     digest_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("digests.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("digests.id", ondelete="CASCADE"), nullable=False
     )
     item_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("items.id", ondelete="CASCADE"), nullable=False
     )
     content_hash_at_send: Mapped[str] = mapped_column(String(64), nullable=False)
 
@@ -162,15 +161,15 @@ class ScheduleModel(Base):
     """Schedules table - user-defined schedules."""
 
     __tablename__ = "schedules"
-    __table_args__ = (Index("idx_schedules_active", "is_active", postgresql_where="is_active = true"),)
+    __table_args__ = (Index("idx_schedules_active", "is_active"),)
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(GUID, primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     digest_type: Mapped[str] = mapped_column(String(20), nullable=False)
     cron_expression: Mapped[str] = mapped_column(String(100), nullable=False)
     timezone: Mapped[str] = mapped_column(String(50), default="Europe/Lisbon")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    project_ids: Mapped[list[UUID]] = mapped_column(ARRAY(PG_UUID(as_uuid=True)), default=list)
+    project_ids: Mapped[list[UUID]] = mapped_column(UUIDArray, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     def __repr__(self) -> str:
@@ -183,9 +182,9 @@ class CollectorErrorModel(Base):
 
     __tablename__ = "collector_errors"
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(GUID, primary_key=True, default=uuid4)
     source_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("sources.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("sources.id", ondelete="CASCADE"), nullable=False
     )
     error_type: Mapped[str | None] = mapped_column(String(100))
     error_message: Mapped[str | None] = mapped_column(Text)

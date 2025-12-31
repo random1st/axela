@@ -55,36 +55,42 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
     error_service: ErrorAlertService | None = None
 
     if app_settings.telegram_bot_token:
-        bot = DigestBot(app_settings.telegram_bot_token.get_secret_value())
-        set_telegram_bot(bot)
+        try:
+            bot = DigestBot(app_settings.telegram_bot_token.get_secret_value())
+            set_telegram_bot(bot)
 
-        # Get chat_id from settings if available
-        session_factory = get_async_session_factory()
-        async with session_factory() as session:
-            settings_repo = SettingsRepositoryImpl(session)
-            chat_id_setting = await settings_repo.get("telegram_chat_id")
-            if chat_id_setting and isinstance(chat_id_setting.value, int):
-                bot.set_chat_id(chat_id_setting.value)
+            # Get chat_id from settings if available
+            session_factory = get_async_session_factory()
+            async with session_factory() as session:
+                settings_repo = SettingsRepositoryImpl(session)
+                chat_id_setting = await settings_repo.get("telegram_chat_id")
+                if chat_id_setting and isinstance(chat_id_setting.value, int):
+                    bot.set_chat_id(chat_id_setting.value)
 
-        await bot.start()
-        logger.info("Telegram bot started")
+            await bot.start()
+            logger.info("Telegram bot started")
+        except Exception as e:
+            logger.warning("Failed to start Telegram bot", error=str(e))
+            bot = None
+            set_telegram_bot(None)
 
-        # Initialize error alert service
-        error_service = ErrorAlertService(
-            bot=bot,
-            session_factory=session_factory,
-        )
-        set_error_alert_service(error_service)
+        # Initialize error alert service if bot started successfully
+        if bot is not None:
+            error_service = ErrorAlertService(
+                bot=bot,
+                session_factory=session_factory,
+            )
+            set_error_alert_service(error_service)
 
-        # Subscribe to collector failures
-        message_bus.subscribe(
-            CollectorFailed,
-            cast(
-                "Callable[[Event], Awaitable[None]]",
-                error_service.handle_collector_failed,
-            ),
-        )
-        logger.info("Error alert service initialized")
+            # Subscribe to collector failures
+            message_bus.subscribe(
+                CollectorFailed,
+                cast(
+                    "Callable[[Event], Awaitable[None]]",
+                    error_service.handle_collector_failed,
+                ),
+            )
+            logger.info("Error alert service initialized")
     else:
         logger.warning("Telegram bot token not configured, alerts disabled")
 

@@ -27,6 +27,7 @@ class TestGetAsyncEngine:
             mock_settings.return_value = MagicMock(
                 database_url="postgresql+asyncpg://user:pass@localhost/db",
                 log_level="INFO",
+                is_sqlite=False,
             )
 
             engine = get_async_engine()
@@ -61,6 +62,7 @@ class TestGetAsyncEngine:
             mock_settings.return_value = MagicMock(
                 database_url="postgresql+asyncpg://user:pass@localhost/db",
                 log_level="DEBUG",
+                is_sqlite=False,
             )
 
             engine1 = get_async_engine()
@@ -70,6 +72,38 @@ class TestGetAsyncEngine:
             assert engine1 is engine2
             # Settings only called once due to caching
             mock_settings.assert_called_once()
+
+        get_async_engine.cache_clear()
+
+    def test_creates_sqlite_engine_when_sqlite(self) -> None:
+        """Test that SQLite engine is created with correct settings."""
+        from axela.infrastructure.database.session import get_async_engine
+
+        get_async_engine.cache_clear()
+
+        mock_engine = MagicMock()
+
+        with (
+            patch("axela.infrastructure.database.session.get_settings") as mock_settings,
+            patch(
+                "axela.infrastructure.database.session.create_async_engine",
+                return_value=mock_engine,
+            ) as mock_create,
+        ):
+            mock_settings.return_value = MagicMock(
+                database_url="sqlite+aiosqlite:///axela.db",
+                log_level="INFO",
+                is_sqlite=True,
+            )
+
+            engine = get_async_engine()
+
+            assert engine is mock_engine
+            mock_create.assert_called_once_with(
+                "sqlite+aiosqlite:///axela.db",
+                echo=False,
+                connect_args={"check_same_thread": False},
+            )
 
         get_async_engine.cache_clear()
 
@@ -91,6 +125,7 @@ class TestGetAsyncEngine:
             mock_settings.return_value = MagicMock(
                 database_url="postgresql+asyncpg://user:pass@localhost/db",
                 log_level="DEBUG",
+                is_sqlite=False,
             )
 
             get_async_engine()
@@ -133,6 +168,7 @@ class TestGetAsyncSessionFactory:
             mock_settings.return_value = MagicMock(
                 database_url="postgresql+asyncpg://user:pass@localhost/db",
                 log_level="INFO",
+                is_sqlite=False,
             )
 
             factory = get_async_session_factory()
@@ -170,6 +206,7 @@ class TestGetAsyncSessionFactory:
             mock_settings.return_value = MagicMock(
                 database_url="postgresql+asyncpg://user:pass@localhost/db",
                 log_level="INFO",
+                is_sqlite=False,
             )
 
             factory1 = get_async_session_factory()

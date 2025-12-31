@@ -15,8 +15,21 @@ from axela.config import get_settings
 
 @lru_cache
 def get_async_engine() -> AsyncEngine:
-    """Get cached async engine."""
+    """Get cached async engine.
+
+    Automatically configures for PostgreSQL or SQLite based on database URL.
+    """
     settings = get_settings()
+
+    if settings.is_sqlite:
+        # SQLite configuration (no connection pooling)
+        return create_async_engine(
+            settings.database_url,
+            echo=settings.log_level == "DEBUG",
+            connect_args={"check_same_thread": False},
+        )
+
+    # PostgreSQL configuration (with connection pooling)
     return create_async_engine(
         settings.database_url,
         echo=settings.log_level == "DEBUG",
