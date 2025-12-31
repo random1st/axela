@@ -57,10 +57,18 @@ class Settings(BaseSettings):
     # Telegram (chat_id is stored in DB settings, configurable via API)
     telegram_bot_token: SecretStr = Field(description="Telegram bot token from @BotFather")
 
-    # Claude API (V2 feature)
-    anthropic_api_key: SecretStr | None = Field(
-        default=None,
-        description="Anthropic API key for AI summarization",
+    # AWS Bedrock for AI summarization
+    bedrock_enabled: bool = Field(
+        default=False,
+        description="Enable AI summarization via AWS Bedrock",
+    )
+    bedrock_region: str = Field(
+        default="us-east-1",
+        description="AWS region for Bedrock",
+    )
+    bedrock_model_id: str = Field(
+        default="amazon.nova-lite-v1:0",
+        description="Bedrock model ID for summarization",
     )
 
     # Scheduling

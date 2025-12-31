@@ -12,6 +12,7 @@ def format_digest(
     items: list[tuple[DigestItem, UUID, Project]],
     digest_type: DigestType,
     language: str = "ru",
+    summaries: dict[UUID, str] | None = None,
 ) -> str:
     """Format digest items into a Telegram HTML message.
 
@@ -19,6 +20,7 @@ def format_digest(
         items: List of (item, item_id, project) tuples
         digest_type: Type of digest (morning, evening, etc.)
         language: Message language (ru or en)
+        summaries: Optional dict mapping project_id to AI summary
 
     Returns:
         Formatted HTML string for Telegram
@@ -26,6 +28,8 @@ def format_digest(
     """
     if not items:
         return _get_empty_message(digest_type, language)
+
+    summaries = summaries or {}
 
     # Group items by project
     by_project: dict[UUID, list[tuple[DigestItem, UUID]]] = defaultdict(list)
@@ -48,6 +52,11 @@ def format_digest(
         color_emoji = _get_color_emoji(project.color)
 
         lines.append(f"{color_emoji} <b>{_escape_html(project.name)}</b>")
+
+        # Add AI summary if available
+        if project_id in summaries:
+            lines.append(f"📝 <i>{_escape_html(summaries[project_id])}</i>")
+
         lines.append("")
 
         for item, _ in project_items:

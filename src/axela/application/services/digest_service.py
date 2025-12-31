@@ -1,5 +1,6 @@
 """Digest service - orchestrates collection, formatting, and delivery."""
 
+from collections import defaultdict
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -7,6 +8,7 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from axela.application.ports.collector import CollectorError
+from axela.application.services.summarization_service import SummarizationService
 from axela.domain.enums import DigestStatus, DigestType
 from axela.domain.events import (
     CollectionCompleted,
@@ -65,6 +67,9 @@ class DigestService:
         self._digests = DigestRepositoryImpl(session)
         self._errors = CollectorErrorRepositoryImpl(session)
         self._settings = SettingsRepositoryImpl(session)
+
+        # Initialize AI summarization service
+        self._summarizer = SummarizationService()
 
     async def generate_digest(
         self,
@@ -323,7 +328,25 @@ class DigestService:
             if project:
                 formatter_items.append((item, item_id, project))
 
-        return format_digest(formatter_items, digest_type, language)
+        # Generate AI summaries per project if enabled
+        summaries: dict[UUID, str] = {}
+        if self._summarizer.is_enabled:
+            # Group items by project for summarization
+            items_by_project: dict[UUID, list[DigestItem]] = defaultdict(list)
+            for item, _, project in formatter_items:
+                items_by_project[project.id].append(item)
+
+            # Generate summary for each project
+            for project_id, project_items in items_by_project.items():
+                project = project_map.get(project_id)
+                if project:
+                    summary = await self._summarizer.summarize_project_items(
+                        project, project_items, language
+                    )
+                    if summary:
+                        summaries[project_id] = summary
+
+        return format_digest(formatter_items, digest_type, language, summaries)
 
     async def mark_digest_sent(
         self,
