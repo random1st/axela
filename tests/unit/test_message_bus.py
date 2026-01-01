@@ -117,7 +117,7 @@ class TestSubscribe:
         handler = lambda event: event  # noqa: E731
 
         # Should not raise
-        bus.subscribe(CollectionCompleted, handler)  # type: ignore[arg-type]
+        bus.subscribe(CollectionCompleted, handler)
         assert len(bus._handlers[CollectionCompleted]) == 1
 
 

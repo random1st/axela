@@ -42,7 +42,7 @@ docker-compose*.yml
 # Documentation
 docs/
 *.md
-!pyproject.toml
+!README.md
 
 # Environment
 .env

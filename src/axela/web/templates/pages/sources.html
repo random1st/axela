@@ -66,7 +66,7 @@
 <!-- New Source Dialog -->
 <dialog id="new-source-dialog" class="round" style="max-width: 360px; width: calc(100% - 32px);">
     <h5>Новый источник</h5>
-    <form hx-post="/web/api/sources"
+    <form hx-post="/api/sources"
           hx-swap="none"
           hx-on::after-request="if(event.detail.successful) { this.reset(); this.closest('dialog').close(); location.reload(); }">
 
@@ -284,7 +284,7 @@ function testCurrentSource() {
     `;
     testTile.style.pointerEvents = 'none';
 
-    fetch(`/web/api/sources/${currentSourceId}/test`, { method: 'POST' })
+    fetch(`/api/sources/${currentSourceId}/test`, { method: 'POST' })
         .then(r => r.json())
         .then(data => {
             dialog.close();
@@ -308,14 +308,14 @@ function editCurrentSource() {
     document.getElementById('source-actions-dialog').close();
     document.getElementById('edit-source-name').value = currentSourceName;
     document.getElementById('edit-source-active').checked = currentSourceActive;
-    document.getElementById('edit-source-form').setAttribute('hx-put', `/web/api/sources/${currentSourceId}`);
+    document.getElementById('edit-source-form').setAttribute('hx-put', `/api/sources/${currentSourceId}`);
     htmx.process(document.getElementById('edit-source-form'));
     document.getElementById('edit-source-dialog').showModal();
 }
 
 function deleteCurrentSource() {
     document.getElementById('source-actions-dialog').close();
-    document.getElementById('confirm-delete-source-btn').setAttribute('hx-delete', `/web/api/sources/${currentSourceId}`);
+    document.getElementById('confirm-delete-source-btn').setAttribute('hx-delete', `/api/sources/${currentSourceId}`);
     htmx.process(document.getElementById('confirm-delete-source-btn'));
     document.getElementById('delete-source-dialog').showModal();
 }

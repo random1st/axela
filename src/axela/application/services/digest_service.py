@@ -340,9 +340,7 @@ class DigestService:
             for project_id, project_items in items_by_project.items():
                 project = project_map.get(project_id)
                 if project:
-                    summary = await self._summarizer.summarize_project_items(
-                        project, project_items, language
-                    )
+                    summary = await self._summarizer.summarize_project_items(project, project_items, language)
                     if summary:
                         summaries[project_id] = summary
 

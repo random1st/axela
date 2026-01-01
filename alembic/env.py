@@ -18,11 +18,11 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Set sqlalchemy.url from environment (fallback for offline migrations)
-database_url = os.environ.get(
-    "AXELA_DATABASE_URL",
-    "postgresql+asyncpg://axela:axela@localhost:5432/axela",
-)
+# Set sqlalchemy.url from environment
+# Default to SQLite in data directory (matching app config behavior)
+data_dir = os.environ.get("AXELA_DATA_DIR", "./data")
+default_db_url = f"sqlite+aiosqlite:///{data_dir}/axela.db"
+database_url = os.environ.get("AXELA_DATABASE_URL", default_db_url)
 config.set_main_option("sqlalchemy.url", database_url)
 
 # add your model's MetaData object here for 'autogenerate' support

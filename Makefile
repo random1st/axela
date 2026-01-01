@@ -1,4 +1,12 @@
-.PHONY: help install dev lint format typecheck test test-cov run migrate clean docker-build docker-up docker-down
+.PHONY: help install dev lint format typecheck test test-cov run migrate clean docker-build docker-up docker-down ecr-login ecr-push ecs-update deploy
+
+# AWS Configuration
+AWS_PROFILE ?= random1st
+AWS_REGION ?= us-east-1
+AWS_ACCOUNT_ID := $(shell AWS_PROFILE=$(AWS_PROFILE) aws sts get-caller-identity --query Account --output text 2>/dev/null)
+ECR_REPO := $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/axela
+ECS_CLUSTER := axela-cluster
+ECS_SERVICE := axela-service
 
 # Default target
 help:
@@ -17,6 +25,11 @@ help:
 	@echo "  docker-build - Build Docker image"
 	@echo "  docker-up   - Start Docker containers"
 	@echo "  docker-down - Stop Docker containers"
+	@echo ""
+	@echo "AWS Deployment:"
+	@echo "  ecr-login   - Login to ECR"
+	@echo "  ecr-push    - Build and push to ECR"
+	@echo "  deploy      - Push to ECR and update ECS service"
 
 # Installation
 install:
@@ -81,3 +94,27 @@ docker-down:
 
 docker-logs:
 	docker-compose logs -f
+
+# AWS ECR
+ecr-login:
+	AWS_PROFILE=$(AWS_PROFILE) aws ecr get-login-password --region $(AWS_REGION) | \
+		docker login --username AWS --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+
+ecr-push: ecr-login
+	docker buildx build --platform linux/amd64 \
+		-t $(ECR_REPO):latest \
+		-t $(ECR_REPO):$(shell git rev-parse --short HEAD) \
+		--push .
+
+# ECS Deployment
+ecs-update:
+	AWS_PROFILE=$(AWS_PROFILE) aws ecs update-service \
+		--cluster $(ECS_CLUSTER) \
+		--service $(ECS_SERVICE) \
+		--force-new-deployment \
+		--region $(AWS_REGION)
+	@echo "Deployment started. Monitor at: https://console.aws.amazon.com/ecs/home?region=$(AWS_REGION)#/clusters/$(ECS_CLUSTER)/services/$(ECS_SERVICE)"
+
+# Full deploy: push image and update ECS
+deploy: ecr-push ecs-update
+	@echo "Deploy complete!"

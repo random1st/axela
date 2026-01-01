@@ -37,7 +37,7 @@
 <!-- New Project Dialog -->
 <dialog id="new-project-dialog" class="round" style="max-width: 360px; width: calc(100% - 32px);">
     <h5>Новый проект</h5>
-    <form hx-post="/web/api/projects"
+    <form hx-post="/api/projects"
           hx-swap="none"
           hx-on::after-request="if(event.detail.successful) { this.reset(); this.closest('dialog').close(); location.reload(); }">
         <div class="field label border round">
@@ -82,7 +82,7 @@
 function editProject(id, name, color) {
     document.getElementById('edit-project-name').value = name;
     document.getElementById('edit-project-color').value = color || '#6750A4';
-    document.getElementById('edit-project-form').setAttribute('hx-put', `/web/api/projects/${id}`);
+    document.getElementById('edit-project-form').setAttribute('hx-put', `/api/projects/${id}`);
     htmx.process(document.getElementById('edit-project-form'));
     document.getElementById('edit-project-dialog').showModal();
 }

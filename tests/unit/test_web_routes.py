@@ -90,12 +90,14 @@ def app_with_mocks(
 ) -> FastAPI:
     """Configure app with mocked dependencies."""
     from axela.api import deps
+    from axela.api.middleware.auth import verify_credentials
 
     app.dependency_overrides[deps.get_project_repository] = lambda: mock_project_repo
     app.dependency_overrides[deps.get_source_repository] = lambda: mock_source_repo
     app.dependency_overrides[deps.get_schedule_repository] = lambda: mock_schedule_repo
     app.dependency_overrides[deps.get_settings_repository] = lambda: mock_settings_repo
     app.dependency_overrides[deps.get_session] = lambda: mock_session
+    app.dependency_overrides[verify_credentials] = lambda: None  # Skip auth in tests
     return app
 
 
@@ -115,7 +117,7 @@ class TestDashboardPage:
     @pytest.mark.asyncio
     async def test_dashboard_renders(self, client: AsyncClient) -> None:
         """Test dashboard page renders successfully."""
-        response = await client.get("/web/")
+        response = await client.get("/")
         assert response.status_code == 200
         assert "Axela" in response.text
 
@@ -137,7 +139,7 @@ class TestDashboardPage:
         mock_source_repo.get_active.return_value = []
         mock_schedule_repo.get_active.return_value = []
 
-        response = await client.get("/web/")
+        response = await client.get("/")
         assert response.status_code == 200
         assert "Проект" in response.text or "проект" in response.text
 
@@ -148,14 +150,14 @@ class TestProjectsPage:
     @pytest.mark.asyncio
     async def test_projects_page_renders(self, client: AsyncClient) -> None:
         """Test projects page renders."""
-        response = await client.get("/web/projects")
+        response = await client.get("/projects")
         assert response.status_code == 200
         assert "Проект" in response.text
 
     @pytest.mark.asyncio
     async def test_projects_page_shows_empty_state(self, client: AsyncClient) -> None:
         """Test projects page shows empty state when no projects."""
-        response = await client.get("/web/projects")
+        response = await client.get("/projects")
         assert response.status_code == 200
         assert "Нет проектов" in response.text
 
@@ -170,7 +172,7 @@ class TestProjectsPage:
             Project(id=uuid4(), name="My Project", color="#FF0000", created_at=datetime.now(UTC)),
         ]
 
-        response = await client.get("/web/projects")
+        response = await client.get("/projects")
         assert response.status_code == 200
         assert "My Project" in response.text
 
@@ -181,7 +183,7 @@ class TestSourcesPage:
     @pytest.mark.asyncio
     async def test_sources_page_renders(self, client: AsyncClient) -> None:
         """Test sources page renders."""
-        response = await client.get("/web/sources")
+        response = await client.get("/sources")
         assert response.status_code == 200
         assert "Источник" in response.text or "проект" in response.text
 
@@ -198,7 +200,7 @@ class TestSourcesPage:
             Project(id=project_id, name="Test Project", created_at=datetime.now(UTC)),
         ]
 
-        response = await client.get(f"/web/sources?project={project_id}")
+        response = await client.get(f"/sources?project={project_id}")
         assert response.status_code == 200
         mock_source_repo.get_by_project.assert_called_once_with(project_id)
 
@@ -209,14 +211,14 @@ class TestSchedulesPage:
     @pytest.mark.asyncio
     async def test_schedules_page_renders(self, client: AsyncClient) -> None:
         """Test schedules page renders."""
-        response = await client.get("/web/schedules")
+        response = await client.get("/schedules")
         assert response.status_code == 200
         assert "Расписание" in response.text
 
     @pytest.mark.asyncio
     async def test_schedules_page_shows_cron_help(self, client: AsyncClient) -> None:
         """Test schedules page shows cron expression examples."""
-        response = await client.get("/web/schedules")
+        response = await client.get("/schedules")
         assert response.status_code == 200
         assert "Cron" in response.text
 
@@ -227,14 +229,14 @@ class TestSettingsPage:
     @pytest.mark.asyncio
     async def test_settings_page_renders(self, client: AsyncClient) -> None:
         """Test settings page renders."""
-        response = await client.get("/web/settings")
+        response = await client.get("/settings")
         assert response.status_code == 200
         assert "Настройки" in response.text
 
     @pytest.mark.asyncio
     async def test_settings_page_shows_telegram_section(self, client: AsyncClient) -> None:
         """Test settings page shows Telegram configuration."""
-        response = await client.get("/web/settings")
+        response = await client.get("/settings")
         assert response.status_code == 200
         assert "Telegram" in response.text
 
@@ -258,7 +260,7 @@ class TestProjectsAPI:
         mock_project_repo.create.return_value = created_project
 
         response = await client.post(
-            "/web/api/projects",
+            "/api/projects",
             data={"name": "New Project", "color": "#00FF00"},
         )
         assert response.status_code == 200
@@ -281,7 +283,7 @@ class TestProjectsAPI:
         mock_project_repo.update.return_value = updated_project
 
         response = await client.put(
-            f"/web/api/projects/{project_id}",
+            f"/api/projects/{project_id}",
             data={"name": "Updated Name", "color": "#0000FF"},
         )
         assert response.status_code == 200
@@ -296,7 +298,7 @@ class TestProjectsAPI:
         mock_project_repo.update.return_value = None
 
         response = await client.put(
-            f"/web/api/projects/{uuid4()}",
+            f"/api/projects/{uuid4()}",
             data={"name": "Test"},
         )
         assert response.status_code == 404
@@ -310,7 +312,7 @@ class TestProjectsAPI:
         """Test deleting a project via HTMX."""
         project_id = uuid4()
 
-        response = await client.delete(f"/web/api/projects/{project_id}")
+        response = await client.delete(f"/api/projects/{project_id}")
         assert response.status_code == 200
         mock_project_repo.delete.assert_called_once_with(project_id)
 
@@ -343,7 +345,7 @@ class TestSourcesAPI:
         )
 
         response = await client.post(
-            "/web/api/sources",
+            "/api/sources",
             data={
                 "project_id": str(project_id),
                 "source_type": "jira",
@@ -377,7 +379,7 @@ class TestSourcesAPI:
         mock_project_repo.get_by_id.return_value = Project(id=project_id, name="Test", created_at=datetime.now(UTC))
 
         response = await client.put(
-            f"/web/api/sources/{source_id}",
+            f"/api/sources/{source_id}",
             data={"name": "Updated Jira", "is_active": "false"},
         )
         assert response.status_code == 200
@@ -391,7 +393,7 @@ class TestSourcesAPI:
         """Test deleting a source via HTMX."""
         source_id = uuid4()
 
-        response = await client.delete(f"/web/api/sources/{source_id}")
+        response = await client.delete(f"/api/sources/{source_id}")
         assert response.status_code == 200
         mock_source_repo.delete.assert_called_once_with(source_id)
 
@@ -404,7 +406,7 @@ class TestSourcesAPI:
         """Test credential testing for non-existent source."""
         mock_source_repo.get_by_id.return_value = None
 
-        response = await client.post(f"/web/api/sources/{uuid4()}/test")
+        response = await client.post(f"/api/sources/{uuid4()}/test")
         assert response.status_code == 200
         data = response.json()
         assert data["valid"] is False
@@ -433,7 +435,7 @@ class TestSchedulesAPI:
         mock_schedule_repo.create.return_value = created_schedule
 
         response = await client.post(
-            "/web/api/schedules",
+            "/api/schedules",
             data={
                 "name": "Morning Digest",
                 "digest_type": "morning",
@@ -463,7 +465,7 @@ class TestSchedulesAPI:
         mock_schedule_repo.update.return_value = updated_schedule
 
         response = await client.put(
-            f"/web/api/schedules/{schedule_id}",
+            f"/api/schedules/{schedule_id}",
             data={
                 "name": "Updated Schedule",
                 "digest_type": "evening",
@@ -482,7 +484,7 @@ class TestSchedulesAPI:
         """Test deleting a schedule via HTMX."""
         schedule_id = uuid4()
 
-        response = await client.delete(f"/web/api/schedules/{schedule_id}")
+        response = await client.delete(f"/api/schedules/{schedule_id}")
         assert response.status_code == 200
         mock_schedule_repo.delete.assert_called_once_with(schedule_id)
 
@@ -498,7 +500,7 @@ class TestSettingsAPI:
     ) -> None:
         """Test creating a setting via HTMX."""
         response = await client.post(
-            "/web/api/settings",
+            "/api/settings",
             data={"key": "test.key", "value": "test_value"},
         )
         assert response.status_code == 200
@@ -513,7 +515,7 @@ class TestSettingsAPI:
     ) -> None:
         """Test updating a setting via HTMX."""
         response = await client.put(
-            "/web/api/settings/my.setting",
+            "/api/settings/my.setting",
             data={"value": "new_value"},
         )
         assert response.status_code == 200
@@ -526,7 +528,7 @@ class TestSettingsAPI:
         mock_settings_repo: AsyncMock,
     ) -> None:
         """Test deleting a setting via HTMX."""
-        response = await client.delete("/web/api/settings/test.key")
+        response = await client.delete("/api/settings/test.key")
         assert response.status_code == 200
         mock_settings_repo.delete.assert_called_once_with("test.key")
 
@@ -538,7 +540,7 @@ class TestSettingsAPI:
     ) -> None:
         """Test batch updating settings via HTMX."""
         response = await client.post(
-            "/web/api/settings/batch",
+            "/api/settings/batch",
             data={
                 "telegram_chat_id": "123456",
                 "digest_language": "en",
@@ -558,7 +560,7 @@ class TestStatusAPI:
         mock_session: AsyncMock,
     ) -> None:
         """Test getting system status."""
-        response = await client.get("/web/api/status")
+        response = await client.get("/api/status")
         assert response.status_code == 200
         assert "Database" in response.text
 
@@ -571,6 +573,6 @@ class TestStatusAPI:
         """Test status when database fails."""
         mock_session.execute.side_effect = Exception("Connection failed")
 
-        response = await client.get("/web/api/status")
+        response = await client.get("/api/status")
         assert response.status_code == 200
         # Should still render but show error state

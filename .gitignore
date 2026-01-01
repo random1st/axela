@@ -29,3 +29,9 @@ htmlcov/
 *.swp
 *.swo
 infra/
+
+# Terraform
+*.tfvars
+!*.tfvars.example
+.terraform/
+*.tfstate*

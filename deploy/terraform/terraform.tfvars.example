@@ -1,0 +1,28 @@
+aws_region  = "us-east-1"
+environment = "production"
+app_name    = "axela"
+
+# Default VPC
+vpc_id = "vpc-ccd978b1"
+
+# Subnets (2 AZs minimum for ALB)
+subnet_ids = [
+  "subnet-067fe959", # us-east-1a
+  "subnet-edb92c8b", # us-east-1b
+]
+
+# ECR (created on first push via `make ecr-push`)
+ecr_repository_url = "604064773257.dkr.ecr.us-east-1.amazonaws.com/axela"
+
+# ECS Configuration
+cpu           = 256
+memory        = 512
+desired_count = 1
+
+# Secrets - set via environment variables:
+# export TF_VAR_telegram_bot_token="..."
+# export TF_VAR_encryption_key="..."
+# export TF_VAR_basic_auth_password="..."
+telegram_bot_token  = ""
+encryption_key      = ""
+basic_auth_password = ""

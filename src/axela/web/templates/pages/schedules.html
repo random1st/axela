@@ -62,7 +62,7 @@
 <!-- New Schedule Dialog -->
 <dialog id="new-schedule-dialog" class="round" style="max-width: 360px; width: calc(100% - 32px);">
     <h5>Новое расписание</h5>
-    <form hx-post="/web/api/schedules"
+    <form hx-post="/api/schedules"
           hx-swap="none"
           hx-on::after-request="if(event.detail.successful) { this.reset(); this.closest('dialog').close(); location.reload(); }">
 
@@ -399,14 +399,14 @@ function editCurrentSchedule() {
     // Load cron into constructor
     loadCronToConstructor('cron-edit', currentSchedule.cron);
 
-    document.getElementById('edit-schedule-form').setAttribute('hx-put', `/web/api/schedules/${currentSchedule.id}`);
+    document.getElementById('edit-schedule-form').setAttribute('hx-put', `/api/schedules/${currentSchedule.id}`);
     htmx.process(document.getElementById('edit-schedule-form'));
     document.getElementById('edit-schedule-dialog').showModal();
 }
 
 function deleteCurrentSchedule() {
     document.getElementById('schedule-actions-dialog').close();
-    document.getElementById('confirm-delete-schedule-btn').setAttribute('hx-delete', `/web/api/schedules/${currentSchedule.id}`);
+    document.getElementById('confirm-delete-schedule-btn').setAttribute('hx-delete', `/api/schedules/${currentSchedule.id}`);
     htmx.process(document.getElementById('confirm-delete-schedule-btn'));
     document.getElementById('delete-schedule-dialog').showModal();
 }

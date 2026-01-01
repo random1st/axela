@@ -19,6 +19,7 @@ from axela.api.deps import (
     get_source_repository,
     get_telegram_bot,
 )
+from axela.api.middleware.auth import verify_credentials
 from axela.application.ports.repository import (
     ProjectRepository,
     ScheduleRepository,
@@ -32,9 +33,9 @@ from axela.infrastructure.collectors.base import CollectorRegistry
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-# Create routers
-router = APIRouter(prefix="/web", tags=["web"])
-api_router = APIRouter(prefix="/web/api", tags=["web-api"])
+# Create routers with basic auth
+router = APIRouter(prefix="", tags=["web"], dependencies=[Depends(verify_credentials)])
+api_router = APIRouter(prefix="/api", tags=["web-api"], dependencies=[Depends(verify_credentials)])
 
 
 # ============================================================================

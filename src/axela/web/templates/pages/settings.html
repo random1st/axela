@@ -6,7 +6,7 @@
 <!-- Telegram Settings -->
 <div class="section-header">Telegram</div>
 <div class="card">
-    <form hx-post="/web/api/settings/batch"
+    <form hx-post="/api/settings/batch"
           hx-swap="none"
           hx-on::after-request="if(event.detail.successful) showToast('Сохранено!', 'success')">
         <div style="padding: 16px;">
@@ -29,7 +29,7 @@
 <!-- Language Settings -->
 <div class="section-header">Язык</div>
 <div class="card">
-    <form hx-post="/web/api/settings/batch"
+    <form hx-post="/api/settings/batch"
           hx-swap="none"
           hx-on::after-request="if(event.detail.successful) showToast('Сохранено!', 'success')">
         <div style="padding: 16px;">

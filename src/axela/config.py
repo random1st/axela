@@ -57,6 +57,20 @@ class Settings(BaseSettings):
     # Telegram (chat_id is stored in DB settings, configurable via API)
     telegram_bot_token: SecretStr = Field(description="Telegram bot token from @BotFather")
 
+    # Basic Auth (for web UI protection)
+    basic_auth_enabled: bool = Field(
+        default=False,
+        description="Enable HTTP Basic Auth for web UI",
+    )
+    basic_auth_username: str = Field(
+        default="admin",
+        description="Basic Auth username",
+    )
+    basic_auth_password: SecretStr = Field(
+        default=SecretStr("changeme"),
+        description="Basic Auth password",
+    )
+
     # AWS Bedrock for AI summarization
     bedrock_enabled: bool = Field(
         default=False,

@@ -42,7 +42,7 @@ VOLUME /data
 # Copy source code
 COPY src/ src/
 COPY alembic/ alembic/
-COPY alembic.ini ./
+COPY alembic.ini README.md ./
 COPY pyproject.toml uv.lock ./
 
 # Install the project itself
@@ -65,5 +65,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"
 
-# Default command
-CMD ["python", "-m", "axela.main"]
+# Default command - run migrations then start app
+CMD ["sh", "-c", "alembic upgrade head && python -m axela.main"]
