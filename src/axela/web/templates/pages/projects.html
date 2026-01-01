@@ -39,11 +39,12 @@
     <h5>Новый проект</h5>
     <form hx-post="/api/projects"
           hx-swap="none"
-          hx-on::after-request="if(event.detail.successful) { this.reset(); this.closest('dialog').close(); location.reload(); }">
+          hx-on::after-request="handleProjectResponse(event, this, 'new-project-error')">
         <div class="field label border round">
             <input type="text" name="name" required minlength="1" maxlength="100">
             <label>Название</label>
         </div>
+        <p id="new-project-error" class="error-text" style="display: none; color: var(--error); font-size: 13px; margin: 4px 0;"></p>
         <input type="hidden" name="color" id="new-project-color" value="#6750A4">
         <p class="small" style="margin: 8px 0 4px;">Цвет</p>
         <div class="color-picker-grid">
@@ -68,11 +69,12 @@
     <h5>Редактировать</h5>
     <form id="edit-project-form"
           hx-swap="none"
-          hx-on::after-request="if(event.detail.successful) { this.closest('dialog').close(); location.reload(); }">
+          hx-on::after-request="handleProjectResponse(event, this, 'edit-project-error')">
         <div class="field label border round">
             <input type="text" name="name" id="edit-project-name" required>
             <label>Название</label>
         </div>
+        <p id="edit-project-error" class="error-text" style="display: none; color: var(--error); font-size: 13px; margin: 4px 0;"></p>
         <input type="hidden" name="color" id="edit-project-color" value="#6750A4">
         <p class="small" style="margin: 8px 0 4px;">Цвет</p>
         <div class="color-picker-grid" id="edit-color-grid">
@@ -128,8 +130,23 @@ function selectColor(btn, inputId) {
     document.getElementById(inputId).value = btn.dataset.color;
 }
 
+function handleProjectResponse(event, form, errorId) {
+    const errorEl = document.getElementById(errorId);
+    if (event.detail.successful) {
+        errorEl.style.display = 'none';
+        form.reset();
+        form.closest('dialog').close();
+        location.reload();
+    } else {
+        const response = event.detail.xhr.responseText;
+        errorEl.textContent = response || 'Ошибка при сохранении';
+        errorEl.style.display = 'block';
+    }
+}
+
 function editProject(id, name, color) {
     document.getElementById('edit-project-name').value = name;
+    document.getElementById('edit-project-error').style.display = 'none';
     const colorValue = color || '#6750A4';
     document.getElementById('edit-project-color').value = colorValue;
 

@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from axela.api.deps import (
@@ -222,8 +223,14 @@ async def create_project(
     color: Annotated[str | None, Form()] = None,
 ) -> HTMLResponse:
     """Create a new project via HTMX."""
-    await project_repo.create(name=name, color=color if color else None)
-    return HTMLResponse(content="")
+    try:
+        await project_repo.create(name=name, color=color if color else None)
+        return HTMLResponse(content="")
+    except IntegrityError:
+        return HTMLResponse(
+            content="Проект с таким именем уже существует",
+            status_code=400,
+        )
 
 
 @api_router.put("/projects/{project_id}", response_class=HTMLResponse)
