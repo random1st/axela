@@ -71,10 +71,10 @@
           hx-on::after-request="if(event.detail.successful) { this.reset(); this.closest('dialog').close(); location.reload(); }">
 
         <div class="field label suffix border round">
-            <select name="project_id" required>
+            <select name="project_id" id="new-source-project" required>
                 <option value="">Выберите проект</option>
                 {% for project in projects %}
-                <option value="{{ project.id }}">{{ project.name }}</option>
+                <option value="{{ project.id }}" {% if selected_project == project.id|string %}selected{% endif %}>{{ project.name }}</option>
                 {% endfor %}
             </select>
             <label>Проект</label>
@@ -167,81 +167,165 @@
 {% endif %}
 {% endblock %}
 
+{% block extra_styles %}
+<style>
+.help-box {
+    background: var(--surface-container-high);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
+.help-box p {
+    margin: 0 0 8px 0;
+}
+.help-box ol {
+    margin: 0;
+    padding-left: 20px;
+}
+.help-box li {
+    margin-bottom: 4px;
+}
+.help-box a {
+    color: var(--primary);
+}
+</style>
+{% endblock %}
+
 {% block extra_scripts %}
 <script>
 const credentialsTemplates = {
     jira: `
-        <div class="field label border round">
-            <input type="url" name="credentials.server_url" required placeholder="https://your-domain.atlassian.net">
-            <label>URL сервера</label>
+        <div class="help-box">
+            <p><strong>Как получить API Token:</strong></p>
+            <ol>
+                <li>Войдите в <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank">Atlassian Account</a></li>
+                <li>Нажмите "Create API token"</li>
+                <li>Скопируйте токен</li>
+            </ol>
         </div>
         <div class="field label border round">
-            <input type="email" name="credentials.email" required>
+            <input type="url" name="credentials.server_url" required placeholder=" ">
+            <label>URL сервера (https://xxx.atlassian.net)</label>
+        </div>
+        <div class="field label border round">
+            <input type="email" name="credentials.email" required placeholder=" ">
             <label>Email</label>
         </div>
         <div class="field label border round">
-            <input type="password" name="credentials.api_token" required>
+            <input type="password" name="credentials.api_token" required placeholder=" ">
             <label>API Token</label>
         </div>
     `,
     slack: `
-        <div class="field label border round">
-            <input type="password" name="credentials.bot_token" required placeholder="xoxb-...">
-            <label>Bot Token</label>
+        <div class="help-box">
+            <p><strong>Как получить Bot Token:</strong></p>
+            <ol>
+                <li>Создайте приложение на <a href="https://api.slack.com/apps" target="_blank">api.slack.com</a></li>
+                <li>Добавьте Bot Token Scopes: channels:history, channels:read</li>
+                <li>Установите приложение в workspace</li>
+                <li>Скопируйте Bot User OAuth Token (xoxb-...)</li>
+            </ol>
         </div>
         <div class="field label border round">
-            <input type="text" name="config.channels" placeholder="general,random">
+            <input type="password" name="credentials.bot_token" required placeholder=" ">
+            <label>Bot Token (xoxb-...)</label>
+        </div>
+        <div class="field label border round">
+            <input type="text" name="config.channels" placeholder=" ">
             <label>Каналы (через запятую)</label>
         </div>
     `,
     gmail: `
-        <div class="field label border round">
-            <textarea name="credentials.credentials_json" required rows="3"></textarea>
-            <label>Service Account JSON</label>
+        <div class="help-box">
+            <p><strong>Как настроить Google Service Account:</strong></p>
+            <ol>
+                <li>Создайте проект в <a href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a></li>
+                <li>Включите Gmail API</li>
+                <li>Создайте Service Account и скачайте JSON ключ</li>
+                <li>В Google Workspace Admin включите domain-wide delegation</li>
+            </ol>
+        </div>
+        <p class="small" style="margin: 8px 0 4px; color: var(--on-surface-variant);">Service Account JSON</p>
+        <div class="field border round" style="margin-bottom: 12px;">
+            <textarea name="credentials.credentials_json" required rows="3" placeholder="Вставьте содержимое JSON файла..." style="width: 100%; font-family: monospace; font-size: 12px;"></textarea>
         </div>
         <div class="field label border round">
-            <input type="email" name="credentials.delegated_email" required>
+            <input type="email" name="credentials.delegated_email" required placeholder=" ">
             <label>Email для делегирования</label>
         </div>
     `,
     google_calendar: `
-        <div class="field label border round">
-            <textarea name="credentials.credentials_json" required rows="3"></textarea>
-            <label>Service Account JSON</label>
+        <div class="help-box">
+            <p><strong>Как настроить Google Service Account:</strong></p>
+            <ol>
+                <li>Создайте проект в <a href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a></li>
+                <li>Включите Google Calendar API</li>
+                <li>Создайте Service Account и скачайте JSON ключ</li>
+                <li>В Google Workspace Admin включите domain-wide delegation</li>
+            </ol>
+        </div>
+        <p class="small" style="margin: 8px 0 4px; color: var(--on-surface-variant);">Service Account JSON</p>
+        <div class="field border round" style="margin-bottom: 12px;">
+            <textarea name="credentials.credentials_json" required rows="3" placeholder="Вставьте содержимое JSON файла..." style="width: 100%; font-family: monospace; font-size: 12px;"></textarea>
         </div>
         <div class="field label border round">
-            <input type="email" name="credentials.delegated_email" required>
+            <input type="email" name="credentials.delegated_email" required placeholder=" ">
             <label>Email для делегирования</label>
         </div>
     `,
     outlook_mail: `
+        <div class="help-box">
+            <p><strong>Как получить токены Microsoft:</strong></p>
+            <ol>
+                <li>Зарегистрируйте приложение в <a href="https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank">Azure AD</a></li>
+                <li>Добавьте разрешения: Mail.Read</li>
+                <li>Получите токен через OAuth 2.0 flow</li>
+            </ol>
+        </div>
         <div class="field label border round">
-            <input type="password" name="credentials.access_token" required>
+            <input type="password" name="credentials.access_token" required placeholder=" ">
             <label>Access Token</label>
         </div>
         <div class="field label border round">
-            <input type="password" name="credentials.refresh_token">
-            <label>Refresh Token</label>
+            <input type="password" name="credentials.refresh_token" placeholder=" ">
+            <label>Refresh Token (опционально)</label>
         </div>
     `,
     outlook_calendar: `
+        <div class="help-box">
+            <p><strong>Как получить токены Microsoft:</strong></p>
+            <ol>
+                <li>Зарегистрируйте приложение в <a href="https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank">Azure AD</a></li>
+                <li>Добавьте разрешения: Calendars.Read</li>
+                <li>Получите токен через OAuth 2.0 flow</li>
+            </ol>
+        </div>
         <div class="field label border round">
-            <input type="password" name="credentials.access_token" required>
+            <input type="password" name="credentials.access_token" required placeholder=" ">
             <label>Access Token</label>
         </div>
         <div class="field label border round">
-            <input type="password" name="credentials.refresh_token">
-            <label>Refresh Token</label>
+            <input type="password" name="credentials.refresh_token" placeholder=" ">
+            <label>Refresh Token (опционально)</label>
         </div>
     `,
     teams: `
+        <div class="help-box">
+            <p><strong>Как получить токены Microsoft:</strong></p>
+            <ol>
+                <li>Зарегистрируйте приложение в <a href="https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank">Azure AD</a></li>
+                <li>Добавьте разрешения: ChannelMessage.Read.All</li>
+                <li>Получите токен через OAuth 2.0 flow</li>
+            </ol>
+        </div>
         <div class="field label border round">
-            <input type="password" name="credentials.access_token" required>
+            <input type="password" name="credentials.access_token" required placeholder=" ">
             <label>Access Token</label>
         </div>
         <div class="field label border round">
-            <input type="text" name="config.team_id">
-            <label>Team ID</label>
+            <input type="text" name="config.team_id" placeholder=" ">
+            <label>Team ID (опционально)</label>
         </div>
     `
 };
