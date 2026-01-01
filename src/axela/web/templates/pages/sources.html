@@ -238,41 +238,61 @@ const credentialsTemplates = {
     `,
     gmail: `
         <div class="help-box">
-            <p><strong>Как настроить Google Service Account:</strong></p>
+            <p><strong>Как получить OAuth токены:</strong></p>
             <ol>
                 <li>Создайте проект в <a href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a></li>
                 <li>Включите Gmail API</li>
-                <li>Создайте Service Account и скачайте JSON ключ</li>
-                <li>В Google Workspace Admin включите domain-wide delegation</li>
+                <li>Создайте OAuth Client ID (тип: Web application)</li>
+                <li>Используйте <a href="https://developers.google.com/oauthplayground/" target="_blank">OAuth Playground</a> для получения токенов</li>
+                <li>В Playground выберите Gmail API v1 → gmail.readonly</li>
             </ol>
         </div>
-        <p class="small" style="margin: 8px 0 4px; color: var(--on-surface-variant);">Service Account JSON</p>
-        <div class="field border round" style="margin-bottom: 12px;">
-            <textarea name="credentials.credentials_json" required rows="3" placeholder="Вставьте содержимое JSON файла..." style="width: 100%; font-family: monospace; font-size: 12px;"></textarea>
+        <div class="field label border round">
+            <input type="password" name="credentials.access_token" required placeholder=" ">
+            <label>Access Token</label>
         </div>
         <div class="field label border round">
-            <input type="email" name="credentials.delegated_email" required placeholder=" ">
-            <label>Email для делегирования</label>
+            <input type="password" name="credentials.refresh_token" required placeholder=" ">
+            <label>Refresh Token</label>
         </div>
+        <div class="field label border round">
+            <input type="text" name="credentials.client_id" required placeholder=" ">
+            <label>Client ID</label>
+        </div>
+        <div class="field label border round">
+            <input type="password" name="credentials.client_secret" required placeholder=" ">
+            <label>Client Secret</label>
+        </div>
+        <input type="hidden" name="credentials.token_uri" value="https://oauth2.googleapis.com/token">
     `,
     google_calendar: `
         <div class="help-box">
-            <p><strong>Как настроить Google Service Account:</strong></p>
+            <p><strong>Как получить OAuth токены:</strong></p>
             <ol>
                 <li>Создайте проект в <a href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a></li>
                 <li>Включите Google Calendar API</li>
-                <li>Создайте Service Account и скачайте JSON ключ</li>
-                <li>В Google Workspace Admin включите domain-wide delegation</li>
+                <li>Создайте OAuth Client ID (тип: Web application)</li>
+                <li>Используйте <a href="https://developers.google.com/oauthplayground/" target="_blank">OAuth Playground</a> для получения токенов</li>
+                <li>В Playground выберите Calendar API v3 → calendar.readonly</li>
             </ol>
         </div>
-        <p class="small" style="margin: 8px 0 4px; color: var(--on-surface-variant);">Service Account JSON</p>
-        <div class="field border round" style="margin-bottom: 12px;">
-            <textarea name="credentials.credentials_json" required rows="3" placeholder="Вставьте содержимое JSON файла..." style="width: 100%; font-family: monospace; font-size: 12px;"></textarea>
+        <div class="field label border round">
+            <input type="password" name="credentials.access_token" required placeholder=" ">
+            <label>Access Token</label>
         </div>
         <div class="field label border round">
-            <input type="email" name="credentials.delegated_email" required placeholder=" ">
-            <label>Email для делегирования</label>
+            <input type="password" name="credentials.refresh_token" required placeholder=" ">
+            <label>Refresh Token</label>
         </div>
+        <div class="field label border round">
+            <input type="text" name="credentials.client_id" required placeholder=" ">
+            <label>Client ID</label>
+        </div>
+        <div class="field label border round">
+            <input type="password" name="credentials.client_secret" required placeholder=" ">
+            <label>Client Secret</label>
+        </div>
+        <input type="hidden" name="credentials.token_uri" value="https://oauth2.googleapis.com/token">
     `,
     outlook_mail: `
         <div class="help-box">
