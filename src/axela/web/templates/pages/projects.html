@@ -44,9 +44,17 @@
             <input type="text" name="name" required minlength="1" maxlength="100">
             <label>Название</label>
         </div>
-        <div class="field label border round">
-            <input type="color" name="color" value="#6750A4" style="height: 48px;">
-            <label>Цвет</label>
+        <input type="hidden" name="color" id="new-project-color" value="#6750A4">
+        <p class="small" style="margin: 8px 0 4px;">Цвет</p>
+        <div class="color-picker-grid">
+            <button type="button" class="color-swatch selected" data-color="#6750A4" style="background: #6750A4;" onclick="selectColor(this, 'new-project-color')"></button>
+            <button type="button" class="color-swatch" data-color="#D81B60" style="background: #D81B60;" onclick="selectColor(this, 'new-project-color')"></button>
+            <button type="button" class="color-swatch" data-color="#F4511E" style="background: #F4511E;" onclick="selectColor(this, 'new-project-color')"></button>
+            <button type="button" class="color-swatch" data-color="#FB8C00" style="background: #FB8C00;" onclick="selectColor(this, 'new-project-color')"></button>
+            <button type="button" class="color-swatch" data-color="#43A047" style="background: #43A047;" onclick="selectColor(this, 'new-project-color')"></button>
+            <button type="button" class="color-swatch" data-color="#00ACC1" style="background: #00ACC1;" onclick="selectColor(this, 'new-project-color')"></button>
+            <button type="button" class="color-swatch" data-color="#3949AB" style="background: #3949AB;" onclick="selectColor(this, 'new-project-color')"></button>
+            <button type="button" class="color-swatch" data-color="#8E24AA" style="background: #8E24AA;" onclick="selectColor(this, 'new-project-color')"></button>
         </div>
         <nav class="right-align" style="margin-top: 16px;">
             <button type="button" class="border round" onclick="this.closest('dialog').close()">Отмена</button>
@@ -65,9 +73,17 @@
             <input type="text" name="name" id="edit-project-name" required>
             <label>Название</label>
         </div>
-        <div class="field label border round">
-            <input type="color" name="color" id="edit-project-color" style="height: 48px;">
-            <label>Цвет</label>
+        <input type="hidden" name="color" id="edit-project-color" value="#6750A4">
+        <p class="small" style="margin: 8px 0 4px;">Цвет</p>
+        <div class="color-picker-grid" id="edit-color-grid">
+            <button type="button" class="color-swatch" data-color="#6750A4" style="background: #6750A4;" onclick="selectColor(this, 'edit-project-color')"></button>
+            <button type="button" class="color-swatch" data-color="#D81B60" style="background: #D81B60;" onclick="selectColor(this, 'edit-project-color')"></button>
+            <button type="button" class="color-swatch" data-color="#F4511E" style="background: #F4511E;" onclick="selectColor(this, 'edit-project-color')"></button>
+            <button type="button" class="color-swatch" data-color="#FB8C00" style="background: #FB8C00;" onclick="selectColor(this, 'edit-project-color')"></button>
+            <button type="button" class="color-swatch" data-color="#43A047" style="background: #43A047;" onclick="selectColor(this, 'edit-project-color')"></button>
+            <button type="button" class="color-swatch" data-color="#00ACC1" style="background: #00ACC1;" onclick="selectColor(this, 'edit-project-color')"></button>
+            <button type="button" class="color-swatch" data-color="#3949AB" style="background: #3949AB;" onclick="selectColor(this, 'edit-project-color')"></button>
+            <button type="button" class="color-swatch" data-color="#8E24AA" style="background: #8E24AA;" onclick="selectColor(this, 'edit-project-color')"></button>
         </div>
         <nav class="right-align" style="margin-top: 16px;">
             <button type="button" class="border round" onclick="this.closest('dialog').close()">Отмена</button>
@@ -77,11 +93,52 @@
 </dialog>
 {% endblock %}
 
+{% block extra_styles %}
+<style>
+.color-picker-grid {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.color-swatch {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.1s;
+}
+.color-swatch:hover {
+    transform: scale(1.1);
+}
+.color-swatch.selected {
+    border-color: white;
+    box-shadow: 0 0 0 2px var(--primary);
+}
+</style>
+{% endblock %}
+
 {% block extra_scripts %}
 <script>
+function selectColor(btn, inputId) {
+    const grid = btn.closest('.color-picker-grid');
+    grid.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById(inputId).value = btn.dataset.color;
+}
+
 function editProject(id, name, color) {
     document.getElementById('edit-project-name').value = name;
-    document.getElementById('edit-project-color').value = color || '#6750A4';
+    const colorValue = color || '#6750A4';
+    document.getElementById('edit-project-color').value = colorValue;
+
+    // Select the matching color swatch
+    const grid = document.getElementById('edit-color-grid');
+    grid.querySelectorAll('.color-swatch').forEach(s => {
+        s.classList.toggle('selected', s.dataset.color === colorValue.toUpperCase());
+    });
+
     document.getElementById('edit-project-form').setAttribute('hx-put', `/api/projects/${id}`);
     htmx.process(document.getElementById('edit-project-form'));
     document.getElementById('edit-project-dialog').showModal();
